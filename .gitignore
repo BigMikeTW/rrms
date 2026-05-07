@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+
+# Environment variables — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Drizzle migrations meta（依專案決定是否要 commit；Phase 1 預設 commit migrations）
+# drizzle/
+
+# OS-specific session handoff
+continue.md
