@@ -35,8 +35,8 @@
 | 後台管理 | 公司同事登入後檢視所有案件、變更狀態、查看媒體 |
 | 認證 | Email + 密碼、Google OAuth、LINE Login（管理端三選一） |
 | LINE 通知 | 新案件 → 推內部 LINE 群組；狀態變更 → 推綁定的客戶（若已綁定） |
-| LINE OA 查詢 | 客戶輸入報修編號 → Bot 回案件狀態 |
-| 案件編號 | `RP-YYYYMMDD-XXXX` 每日序號 |
+| LINE OA 查詢 | 客戶輸入「報修編號 + 手機末四碼」雙重驗證後，Bot 回案件狀態（僅揭露最小欄位） |
+| 案件編號 | `RPR-YYYYMMDDXXX` 每日序號 |
 | 狀態流程 | 已立案 → 派工中 → 已派工 → 已完成 / 已取消（每階段記錄時間戳） |
 | 自動匿名化 | 結案翌日起算 2 年到期，凌晨排程執行 |
 | 個資權利請求 | LINE OA 選單「我要查詢/更正/刪除我的資料」→ 後台同事手動處理 |
@@ -91,7 +91,7 @@
 **送出後行為**：
 
 1. 後端驗證資料
-2. 寫入 Postgres，產生 `RP-YYYYMMDD-XXXX` 編號
+2. 寫入 Postgres，產生 `RPR-YYYYMMDDXXX` 編號
 3. 透過 LINE Messaging API 推訊息到內部 LINE 群組
 4. 顯示成功頁，告知客戶案件編號 + LINE OA QR code（鼓勵加好友查狀態）
 
@@ -153,10 +153,32 @@
 
 #### 4.4.3 LINE OA 功能（Phase 1）
 
-- **Rich Menu**：常駐選單
-  - 「查詢案件狀態」→ Bot 引導輸入報修編號
-  - 「我要刪除資料」→ Bot 引導輸入手機號或 Email，後台同事手動處理
-- **指令解析**：客戶傳訊息若符合 `RP-\d{8}-\d{4}` 格式，自動視為查詢指令
+**Rich Menu**（常駐選單）：
+
+- 「查詢案件狀態」→ 進入查詢驗證流程（見下方）
+- 「我要查詢/更正我的資料」→ Bot 引導輸入聯絡資訊，後台同事手動回覆
+- 「我要刪除資料」→ Bot 引導輸入手機號或 Email，後台同事手動處理
+
+**查詢驗證流程（雙重驗證，避免編號被猜測導致個資外洩）**：
+
+1. 客戶按「查詢案件狀態」，或主動傳符合 `RPR-\d{11}` 格式的訊息
+2. Bot 回應：「請輸入您報修時留下的手機號碼末四碼（4 位數字）」
+3. 客戶輸入 4 位數
+4. 後端比對 `cases.case_no` + `cases.reporter_phone` 末四碼
+5. **驗證通過** → Bot 回**最小揭露**內容：
+   - 案件編號
+   - 目前狀態（已立案 / 派工中 / 已派工 / 已完成 / 已取消）
+   - 立案時間
+   - 最近狀態變更時間
+   - **不揭露**：姓名、完整手機、Email、地點、報修內容、照片影片（這些 Bot 訊息會留在 LINE 伺服器，最小揭露原則）
+6. **驗證失敗** → Bot 回「資料不正確，請確認後再試」並寫入 `query_attempts` 表
+
+**Rate limiting（防止編號被列舉嘗試）**：
+
+- 同一 LINE userId 在 24 小時內失敗驗證 ≥ 5 次 → 暫停該 userId 查詢功能 24 小時
+- 同一 `case_no` 在 24 小時內失敗驗證 ≥ 5 次 → 觸發後台告警（可能是有人正在嘗試竊取資料），通知管理員 LINE 群組
+
+**法源**：個人資料保護法第 5 條（合理目的關聯）+ 施行細則第 12 條第 2 項（安全維護義務、稽核機制、使用紀錄保存）
 
 #### 4.4.4 LINE 環境隔離
 
@@ -226,7 +248,7 @@
 | 欄位 | 型別 | 備註 |
 |---|---|---|
 | id | uuid | PK |
-| case_no | text | unique；`RP-YYYYMMDD-XXXX` |
+| case_no | text | unique；`RPR-YYYYMMDDXXX`（每日序號 000-999） |
 | reporter_name | text | |
 | reporter_phone | text | |
 | reporter_email | text | |
@@ -283,6 +305,19 @@
 ### 5.6 `consent_versions`
 
 存歷次隱私告知聲明的內容快照，搭配 `cases.consent_text_version` 可還原同意當下看的是哪個版本。
+
+### 5.7 `query_attempts`（LINE OA 查詢驗證紀錄）
+
+| 欄位 | 型別 | 備註 |
+|---|---|---|
+| id | uuid | PK |
+| line_user_id | text | 提交查詢的 LINE userId |
+| case_no_attempted | text | 客戶輸入的編號 |
+| phone_last4_attempted | text | 客戶輸入的末四碼（雜湊或留明文後續匿名化） |
+| success | boolean | 驗證通過與否 |
+| attempted_at | timestamptz | |
+
+> 用於 4.4.3 的 rate limiting 邏輯與後台告警偵測。同一案件被匿名化時，`query_attempts` 中對應紀錄一併清除。
 
 ---
 
@@ -350,7 +385,8 @@
 | 儲存加密 | Neon AES-256 at-rest（預設） | — |
 | 密碼雜湊 | bcrypt | — |
 | 權限控制 | role-based（staff / admin） | + 敏感欄位 JIT 授權 |
-| 存取紀錄 | case_status_history 記錄狀態變更 | + access_log 記錄敏感欄位查看 |
+| 存取紀錄 | case_status_history 記錄狀態變更；query_attempts 記錄 LINE OA 查詢嘗試 | + access_log 記錄敏感欄位查看 |
+| 客戶查詢驗證 | LINE OA 查詢需「報修編號 + 手機末四碼」雙重驗證 + rate limiting + 異常告警 | + 客戶端 LINE Login OAuth 取代 |
 | 資料外洩通報 | 內部 SOP 文件（24h 內部通報、72h 通知當事人） | — |
 
 ### 6.6 委外處理（第 8 條第 7 項）
@@ -450,6 +486,7 @@ export const config: VercelConfig = {
 | Dropbox App quota | 免費 plan 上限 200,000 API call/month | 若不足，升級或評估搬到 Cloudflare R2 |
 | Neon free tier | 0.5 GB 儲存、3 GB egress/月 | Phase 1 預估遠低於上限；若達上限升級 |
 | LINE Webhook 必須 HTTPS | Vercel 預設給 SSL，符合 | — |
+| LINE OA 查詢被列舉/探測 | 報修編號每日序號可推測 | 雙重驗證（編號 + 手機末四碼）+ rate limiting + 異常告警；最小揭露原則 |
 | Phase 1 不做客戶端登入 | 假設客戶資料已在表單中收齊；不需身份驗證即可建案 | 若有惡意大量送出，Phase 2 加 reCAPTCHA |
 | 個資外洩 | 任何雲端服務都有風險 | 走 6.7 SOP；保險評估在 plan 階段考慮 |
 
