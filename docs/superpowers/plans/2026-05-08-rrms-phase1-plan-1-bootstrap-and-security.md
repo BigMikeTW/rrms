@@ -1474,16 +1474,19 @@ git checkout main
 
 ## 後續計畫預告
 
-Plan 1 完成後依序進入：
+Plan 1 完成後依序進入（總共 8 份計畫，本計畫為第 1 份）：
 
-| # | 計畫 | 預估 task 數 |
-|---|---|---|
-| 2 | Database + Auth Foundation | ~12 |
-| 3 | Public Form + PDPA Compliance | ~10 |
-| 4 | Dropbox Media Pipeline | ~8 |
-| 5 | Admin Backend + LINE Notifications | ~14 |
-| 6 | LINE OA + Customer Query | ~10 |
-| 7 | Anonymization Cron + Production Cutover | ~8 |
+| # | 計畫 | 主要內容 | 預估 task 數 |
+|---|---|---|---|
+| 2 | Cross-Cutting Security Platform | Dependabot + OWASP ZAP CI + 排程掃描 + 自動開 issue | ~10 |
+| 3 | Database + Auth Foundation | Drizzle schema + Auth.js 三 provider | ~12 |
+| 4 | Public Form + PDPA Compliance | `/report` 表單 + 隱私同意版本管理 + 案件編號 | ~10 |
+| 5 | Dropbox Media Pipeline | server-side 簽 upload URL + 瀏覽器直傳 | ~8 |
+| 6 | Admin Backend + LINE Notifications | `/admin` 全套 + 狀態變更觸發 LINE push | ~14 |
+| 7 | LINE OA + Customer Query | Rich Menu + 雙重驗證查詢 + rate limiting | ~10 |
+| 8 | Anonymization Cron + Production Cutover | Vercel Cron + DNS + Prod LINE channel | ~8 |
+
+每份 feature 計畫（3-8）都會內嵌**該 feature 對應的攻擊測試**（spec 6.7.4 紅隊驗證），跨 feature 的水平資安平台則由 Plan 2 集中處理。
 
 每份計畫都會：
 - 對照 spec 章節建立 coverage
