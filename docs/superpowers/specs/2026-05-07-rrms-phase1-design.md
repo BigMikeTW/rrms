@@ -427,13 +427,137 @@
   - `SameSite=Lax`（防 CSRF）
 - 來源：OWASP Session Management Cheat Sheet https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
 
-#### 6.7.4 自動防護機制（Plan 階段建立）
+#### 6.7.4 自動防護機制 — 五層縱深防禦（Defense in Depth）
 
-- **`.gitignore`** 含 `.env`、`.env.*`（已寫入 root `.gitignore`）
-- **Pre-commit hook（gitleaks 或同等工具）** 阻擋誤 commit 含 secret 的檔案
-- **Build-time bundle 掃描** 確認最終打包到 client 的 JS 不含任何機密 pattern
-- **CI 強制檢查**：commit 含 secret 直接 fail
-- 來源：gitleaks 官方文件 https://github.com/gitleaks/gitleaks
+**原則**：任何單一檢查都可能被繞過或失效；採用五層獨立檢查，每層擋一面，任一層擋下即安全。**Phase 1 必做 L1 + L2 + L4**；L3、L5 為 Phase 2 補強。
+
+##### Layer 1：Claude Code Hooks（AI 開發 session 內，最即時）
+
+**目的**：當 AI 寫 / 改程式碼時，即時擋住違規 commit 進入測試階段。
+
+**Hook 設計（兩道）**：
+
+| Hook event | 觸發時機 | exit 2 行為 | 用途 |
+|---|---|---|---|
+| `PostToolUse` matcher=`Task` | code-reviewer 等 subagent 結束後 | ❌ **不擋**，但 stderr 內容會回饋給主代理 → Claude 看到問題會自行修正 | 第一次預警，鼓勵自主修復 |
+| `Stop` | 主代理打算結束對話前 | ✅ **真正擋**（官方原文：「Prevents Claude from stopping, continues the conversation」） | 最終放行閘；不過就不准結束 |
+
+**Exit code 規則（已 fetch Claude Code Hooks 官方文件 2026-05-08 驗證）**：
+
+| Exit Code | 行為 | stdout | stderr |
+|---|---|---|---|
+| `0` | 成功；不擋 | 解析為 JSON（可選用結構化控制） | 忽略 |
+| `2` | 阻止錯誤（blocking error） | **完全忽略**（即使印 JSON） | 回傳給 Claude 當錯誤訊息 |
+| 其他（含 `1`） | 非阻止錯誤 | 忽略 | 第一行顯示於 transcript，全文進 debug log |
+
+> ⚠️ **常見地雷**：`exit 1` **不會擋**。要強制執行 policy 必須用 `exit 2`。
+> ⚠️ exit code 與 JSON **不可混用**：JSON 只在 `exit 0` 時被解析。
+
+**設定位置**：專案根目錄 `.claude/settings.json`，搭配 `scripts/post-review-scan.sh`
+
+**掃描內容**（同 L2，但即時跑）：見下方共用清單。
+
+**來源**：Claude Code Hooks 官方文件 https://docs.claude.com/en/docs/claude-code/hooks（2026-05-08 fetch 驗證 exit code 表格、event 列表、JSON vs exit code 互斥規則）
+
+---
+
+##### Layer 2：Pre-commit hook（本機端，必做）
+
+**目的**：`git commit` 前本機自動檢查；違反 → commit 失敗 → 不會進到 git 物件中。
+
+**工具鏈**：
+
+| 角色 | 工具 |
+|---|---|
+| Hook 管理 | Husky https://typicode.github.io/husky/ |
+| 只跑 staged 檔案 | lint-staged |
+| Secret 偵測 | gitleaks https://github.com/gitleaks/gitleaks |
+| 型別檢查 | `tsc --noEmit` |
+| Lint | ESLint（含自訂 rule） |
+| 格式 | Prettier |
+
+**自訂 ESLint 規則（重點）**：
+- 禁止 `process.env.NEXT_PUBLIC_*` 名稱中含 `SECRET` / `KEY` / `TOKEN` / `PASSWORD`
+- 禁止 hardcoded 字串符合常見 secret pattern（API key 開頭、JWT 結構等）
+- 禁止 `console.log(process.env...)` 式的洩漏
+
+---
+
+##### Layer 3：Pre-push hook（本機端，Phase 2）
+
+**目的**：`git push` 前跑完整測試套件 + 完整 history 掃描。Phase 2 引入。
+
+---
+
+##### Layer 4：CI on PR（GitHub Actions，必做）
+
+**目的**：本機若被繞過，雲端再擋一次；同時供 code review 自動 status check。
+
+**Workflow jobs**：
+
+| Job 名稱 | 內容 | 失敗即 block merge |
+|---|---|---|
+| `secrets-scan` | `gitleaks detect --source . --redact`（全 history 掃） | ✅ |
+| `lint-and-types` | `pnpm lint && pnpm typecheck` | ✅ |
+| `unit-tests` | Vitest | ✅ |
+| `e2e-smoke` | Playwright 主要 happy path | ✅ |
+| `bundle-scan` | `next build` 後 grep `.next/static/**` 不含任何 secret pattern | ✅ |
+| `semgrep` | OWASP top 10 規則集 | ✅ |
+
+**強制機制**：在 GitHub repo Settings → Branch Protection 把上述 jobs 設為 **required status checks**，未通過者**禁止 merge 到 `main`**。
+
+**來源**：
+- GitHub Actions https://docs.github.com/en/actions
+- GitHub Branch Protection https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
+- semgrep https://semgrep.dev/
+
+---
+
+##### Layer 5：Vercel build check（Phase 2）
+
+**目的**：部署最後一關。`vercel.ts` 的 `buildCommand` 中加入掃描，scan fail → build fail → 不部署。Phase 2 補齊。
+
+---
+
+##### 五層共用：掃描內容清單
+
+每層都至少包含這些檢查（依該層性能取捨深度）：
+
+| 檢查項 | 工具 | 對應的硬性條款 |
+|---|---|---|
+| commit / 暫存中含 secret | gitleaks | 6.7.1 |
+| `NEXT_PUBLIC_*_SECRET / *_KEY / *_TOKEN` | 自訂 ESLint rule | 6.7.1 |
+| client bundle 含 secret pattern | 自訂 grep script | 6.7.1, 6.7.5 |
+| 直接從前端呼叫第三方 API | 自訂 ESLint rule（禁 import `@line/bot-sdk` 於 `'use client'` 檔案等） | 6.7.5 |
+| Cookie 設定缺 `HttpOnly` | grep + 設定檔檢查 | 6.7.3 |
+| 通用安全 anti-pattern | semgrep OWASP rule pack | 6.7.x 全段 |
+
+---
+
+##### 違規處置（覆蓋 6.7.6）
+
+任何一層偵測到 secret 已進入 git：
+
+1. **該 layer 立即 fail**，禁止進入下一階段
+2. 視同**該 secret 已外洩**：立即透過原服務後台輪替（rotate）該 secret
+3. 從 git history 清除（用 `git filter-repo` 或 BFG Repo-Cleaner）
+4. 內部按 6.8 外洩通報 SOP 執行；若該 secret 涉及客戶個資存取（DB password、Dropbox refresh token）→ 同時走第 12 條當事人通知與主管機關通報
+
+**來源**：BFG Repo-Cleaner https://rtyley.github.io/bfg-repo-cleaner/
+
+---
+
+##### Phase 1 啟用清單（plan 階段建立）
+
+- [ ] 撰寫 `scripts/post-review-scan.sh`（L1、L2、L4 共用）
+- [ ] `.claude/settings.json` 設定 `Stop` + `PostToolUse(matcher=Task)` 兩個 hook
+- [ ] 安裝 Husky + lint-staged，掛 pre-commit
+- [ ] 自訂 ESLint plugin（NEXT_PUBLIC_*_SECRET 偵測 + 前端禁 import 第三方 SDK 規則）
+- [ ] gitleaks 設定檔（`.gitleaks.toml`）含 LINE Channel Secret、Dropbox token、Auth.js secret 的客製 pattern
+- [ ] GitHub Actions workflow `.github/workflows/ci.yml`
+- [ ] GitHub Branch Protection 設 required status checks
+- [ ] Bundle scan script（next build 後比對 client output）
+- [ ] **驗證五層皆能正確擋下故意植入的 secret**（紅隊測試 / red team test）
 
 #### 6.7.5 對外 API 呼叫一律走 server-side
 
