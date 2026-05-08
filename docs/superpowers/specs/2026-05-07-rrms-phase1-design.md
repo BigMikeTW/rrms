@@ -220,7 +220,7 @@
 - API：`/2/files/get_temporary_upload_link`
 - 來源：Dropbox API v2 官方文件 https://www.dropbox.com/developers/documentation/http/documentation
 
-**檔案命名**：`/<env>/<RP-編號>/<uuid>.<ext>`
+**檔案命名**：`/<env>/<RPR-編號>/<uuid>.<ext>`
 
 ---
 
@@ -400,7 +400,60 @@
 
 > Plan 階段確認每家是否需要單獨簽署 DPA 或其標準條款已足夠。
 
-### 6.7 外洩通報 SOP（內部文件，plan 階段定稿）
+### 6.7 機密管理與前端資料外露禁則（硬性條款）
+
+**原則**：所有伺服器機密絕不出現在瀏覽器 F12 / DevTools / 原始碼 view-source / JS bundle 中。
+
+#### 6.7.1 程式碼撰寫硬性規則
+
+- **禁止 hardcode 任何**機密、密碼、token、API key、secret、簽章金鑰、refresh token、OAuth client secret、DB connection string 進入原始碼
+- **所有機密走 Vercel 環境變數**，不可在原始碼中以任何形式（含字串、註解、測試 fixture）出現實際值
+- **環境變數命名禁則**：機密變數**絕不**以 `NEXT_PUBLIC_` 開頭（Next.js 會將此前綴變數注入瀏覽器 bundle）
+- 來源依據：Next.js 官方環境變數規範 https://nextjs.org/docs/app/building-your-application/configuring/environment-variables
+
+#### 6.7.2 機密歸屬清單
+
+| 類別 | 範例 | 存放位置 | F12 可見？ |
+|---|---|---|---|
+| 伺服器機密 | DB 密碼、LINE Channel Secret、Dropbox refresh token、OAuth client_secret、Auth.js secret、Webhook 簽章 | Vercel env（**無** `NEXT_PUBLIC_` 前綴）；只在 API Route / Server Component / Server Action 使用 | ❌ 絕不可見 |
+| 公開識別碼 | LINE Login `client_id`、Google `client_id`、LIFF ID | Vercel env（可加 `NEXT_PUBLIC_` 前綴），或寫死於前端 | ✅ 設計上即可見；安全靠 redirect URI 白名單 |
+| 使用者畫面上的資料 | 報修人姓名/手機/Email 等 | Postgres → API → 前端 | ✅ 對「有權限的本人」可見；無權限者打 API 直接被拒 |
+
+#### 6.7.3 認證 Cookie 設定
+
+- Auth.js session cookie 必須設定：
+  - `HttpOnly`（JS 無法讀取，防 XSS 竊取）
+  - `Secure`（僅 HTTPS）
+  - `SameSite=Lax`（防 CSRF）
+- 來源：OWASP Session Management Cheat Sheet https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+
+#### 6.7.4 自動防護機制（Plan 階段建立）
+
+- **`.gitignore`** 含 `.env`、`.env.*`（已寫入 root `.gitignore`）
+- **Pre-commit hook（gitleaks 或同等工具）** 阻擋誤 commit 含 secret 的檔案
+- **Build-time bundle 掃描** 確認最終打包到 client 的 JS 不含任何機密 pattern
+- **CI 強制檢查**：commit 含 secret 直接 fail
+- 來源：gitleaks 官方文件 https://github.com/gitleaks/gitleaks
+
+#### 6.7.5 對外 API 呼叫一律走 server-side
+
+- **禁止**前端直接呼叫 LINE Messaging API、Dropbox API、DB（即使透過代理）
+- 所有外部 API 由自家 Next.js API Route / Server Action 中轉
+- 前端只跟自家 API 對話（同源），不接觸任何第三方憑證
+- 此原則同時保證 6.7.1 不會被破壞
+
+#### 6.7.6 違反處理
+
+任何 PR 若違反 6.7.1 ~ 6.7.5：
+- CI 自動 fail，禁止 merge
+- code review 階段直接退件
+- 已 commit 的 secret 視同**已外洩**：立即輪替該 secret，再從 git history 清除
+
+> 此節為個資法第 12 條「安全維護義務」與施行細則第 12 條第 2 項「設備安全」「事故預防」的具體實踐。
+
+---
+
+### 6.8 外洩通報 SOP（內部文件，plan 階段定稿）
 
 1. **發現**：任何同事或自動監控發現異常 → 立即通知系統管理員
 2. **24 小時內**：管理員初步評估範圍、影響、原因；保存證據
@@ -488,7 +541,7 @@ export const config: VercelConfig = {
 | LINE Webhook 必須 HTTPS | Vercel 預設給 SSL，符合 | — |
 | LINE OA 查詢被列舉/探測 | 報修編號每日序號可推測 | 雙重驗證（編號 + 手機末四碼）+ rate limiting + 異常告警；最小揭露原則 |
 | Phase 1 不做客戶端登入 | 假設客戶資料已在表單中收齊；不需身份驗證即可建案 | 若有惡意大量送出，Phase 2 加 reCAPTCHA |
-| 個資外洩 | 任何雲端服務都有風險 | 走 6.7 SOP；保險評估在 plan 階段考慮 |
+| 個資外洩 | 任何雲端服務都有風險 | 走 6.8 SOP；保險評估在 plan 階段考慮 |
 
 ---
 
