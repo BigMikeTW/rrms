@@ -4,7 +4,7 @@
 
 > **給人類使用者**：Phase 1 第 3/8 份計畫。依賴 Plan 1（CI、Branch protection）+ Plan 2（Dependabot/ZAP）已完成。
 
-**Goal:** 建立 Postgres 資料庫（Neon via Vercel Marketplace）、Drizzle ORM、RRMS 業務 7 張表 + Better Auth 4 張核心表 schema、Better Auth 三 provider 登入（Email/密碼 + Google + LINE Login via Generic OAuth）、admin 帳號邀請（magicLink plugin）與管理流程（admin plugin），以及 cookie / session 安全強化（HttpOnly + Secure + SameSite=Lax）。
+**Goal:** 建立 Postgres 資料庫（Neon via Vercel Marketplace）、Drizzle ORM、RRMS 業務 6 張表 + Better Auth 4 張核心表（共 10 張）schema、Better Auth 三 provider 登入（Email/密碼 + Google + LINE Login via Generic OAuth）、admin 帳號邀請（magicLink plugin）與管理流程（admin plugin），以及 cookie / session 安全強化（HttpOnly + Secure + SameSite=Lax）。Phase 1 結束時 schema 還會被 Plan 4 加 `rate_limit_buckets`、Plan 7 加 `oa_conversations` + `customer_requests`，最終 13 張表（不在本計畫範圍）。
 
 **Architecture:** Drizzle 直接匯出 TypeScript schema；Better Auth 走 `drizzleAdapter`；Email/密碼用 `emailAndPassword`（內建 scrypt，無 bcrypt 依賴）；Google 走內建 `socialProviders.google`；LINE Login 走 `genericOAuth` plugin 配 OIDC discovery；session DB token + HttpOnly cookie；middleware 在 `/admin/*` 強制 auth + role-based 授權（admin plugin）。
 

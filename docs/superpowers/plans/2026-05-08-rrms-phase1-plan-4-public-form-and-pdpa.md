@@ -70,7 +70,7 @@ __tests__/
 
 - [ ] Plan 3 全部驗收通過
 - [ ] 至少一個 admin 帳號已 seed
-- [ ] DB 內 7 張表已建好
+- [ ] DB 內 10 張表已建好（RRMS 6 + Better Auth 4；Plan 3 結束時的狀態）
 
 ---
 

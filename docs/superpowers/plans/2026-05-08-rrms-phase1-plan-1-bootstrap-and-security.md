@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **給人類使用者**：本計畫為 Phase 1 第 1/7 份計畫。完成後產出可運作的 Next.js 專案骨架 + 五層縱深防禦中 L1/L2/L4 三道必要防線，並通過紅隊測試。後續計畫見本檔尾段。
+> **給人類使用者**：本計畫為 Phase 1 第 1/8 份計畫。完成後產出可運作的 Next.js 專案骨架 + 五層縱深防禦中 L1/L2/L4 三道必要防線，並通過紅隊測試。後續計畫見本檔尾段。
 
 **Goal:** 建立 RRMS 專案的 Next.js 16 骨架，部署 L1（Claude Code Hooks）+ L2（Pre-commit）+ L4（GitHub Actions CI）三層獨立的安全防護，並通過故意植入 secret 的紅隊測試證明三層皆能擋下，建立一個「再寫任何 feature code 之前，安全防線已經先到位」的開發環境。
 
@@ -35,7 +35,7 @@
 |---|---|
 | 6.7.1 程式碼撰寫硬性規則 | Task 4 + Task 5 + Task 6 |
 | 6.7.2 機密歸屬清單 | Task 11（.env.example 模板） |
-| 6.7.3 認證 Cookie 設定 | 由 Plan 2 處理（Auth.js 設定時） |
+| 6.7.3 認證 Cookie 設定 | 由 Plan 3 處理（Better Auth 設定時，Task 7 + Task 11） |
 | 6.7.4 自動防護 L1 Claude hooks | Task 10 |
 | 6.7.4 自動防護 L2 pre-commit | Task 6 |
 | 6.7.4 自動防護 L4 GitHub Actions | Task 8 + Task 9 |
@@ -422,9 +422,12 @@ const SERVER_ONLY_PACKAGES = [
   "@line/bot-sdk",
   "dropbox",
   "drizzle-orm/node-postgres",
+  "drizzle-orm/neon-http",
   "@neondatabase/serverless",
-  "bcrypt",
-  "argon2",
+  "better-auth",
+  "better-auth/adapters/drizzle",
+  "better-auth/plugins",
+  "better-auth/next-js",
 ];
 
 export default {
@@ -557,7 +560,7 @@ git commit -m "feat(security): add custom ESLint rules for secret-var and client
 
 ---
 
-## Task 5: gitleaks 設定（含 LINE / Dropbox / Auth.js 客製 pattern）
+## Task 5: gitleaks 設定（含 LINE / Dropbox / Better Auth 客製 pattern）
 
 **Files:**
 - Create: `.gitleaks.toml`
@@ -596,9 +599,9 @@ regex = '''sl\.[A-Za-z0-9_-]{50,}'''
 tags = ["dropbox", "secret"]
 
 [[rules]]
-id = "authjs-secret"
-description = "Auth.js / NextAuth secret"
-regex = '''(?i)(NEXTAUTH_SECRET|AUTH_SECRET)[\s=]+["']?([A-Za-z0-9+/=]{32,})["']?'''
+id = "auth-secret"
+description = "Better Auth / NextAuth / Auth.js secret"
+regex = '''(?i)(BETTER_AUTH_SECRET|NEXTAUTH_SECRET|AUTH_SECRET)[\s=]+["']?([A-Za-z0-9+/=]{32,})["']?'''
 tags = ["auth", "secret"]
 
 # 全域 allowlist（別把 .env.example 跟測試 fixture 當成洩漏）
@@ -754,7 +757,7 @@ const PATTERNS = [
   { name: "LINE Channel Secret", regex: /channel[_-]?secret[^a-z]+[a-f0-9]{32}/i },
   { name: "LINE Channel Access Token", regex: /channel[_-]?access[_-]?token[^a-z]+[A-Za-z0-9+/=]{100,}/i },
   { name: "Dropbox token", regex: /sl\.[A-Za-z0-9_-]{50,}/ },
-  { name: "Auth.js secret", regex: /(NEXTAUTH_SECRET|AUTH_SECRET)\s*=\s*["']?[A-Za-z0-9+/=]{32,}/ },
+  { name: "Better Auth / Auth.js secret", regex: /(BETTER_AUTH_SECRET|NEXTAUTH_SECRET|AUTH_SECRET)\s*=\s*["']?[A-Za-z0-9+/=]{32,}/ },
   { name: "Generic API key", regex: /(api[_-]?key|secret[_-]?key)\s*[:=]\s*["'][A-Za-z0-9_+/=-]{20,}["']/i },
 ];
 
@@ -1127,9 +1130,9 @@ git commit -m "feat(security): add Claude Code hooks (Stop + PostToolUse) for L1
 # Postgres connection string (Neon, 由 Vercel Marketplace 注入)
 DATABASE_URL=
 
-# Auth.js
-AUTH_SECRET=
-AUTH_URL=
+# Better Auth
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
 
 # LINE Messaging API (官方帳號 / OA)
 LINE_MESSAGING_CHANNEL_SECRET=
@@ -1391,7 +1394,7 @@ git commit -m "docs: write developer README with security model & workflow"
 ```ts
 // vercel.ts
 // 對應 spec 7.4
-import type { VercelConfig } from '@vercel/config/v1';
+import type { VercelConfig } from '@vercel/config';
 
 export const config: VercelConfig = {
   framework: 'nextjs',

@@ -119,26 +119,26 @@
 
 ### 4.3 認證
 
-**Library**：Auth.js v5（Next.js App Router 適配版）
+**Library**：Better Auth ^1.6（自帶 Drizzle adapter；scrypt 雜湊內建；email/password + Google 內建 + LINE 走 genericOAuth plugin + magicLink plugin 邀請 + admin plugin RBAC）
 
 **登入方式（Phase 1，admin 側專用）**：
 
 | 方式 | Provider | 備註 |
 |---|---|---|
-| Email + 密碼 | Credentials provider | 帳號統一用 Email；密碼用 bcrypt 雜湊 |
+| Email + 密碼 | Better Auth `emailAndPassword` provider | 帳號統一用 Email；密碼用 Better Auth 內建 scrypt 雜湊（無需 bcrypt） |
 | Google | Google OAuth provider | 內建 |
 | LINE | 自訂 OAuth provider | 用 LINE Login channel 設定 |
 
 **帳號建立**：管理員在後台建帳號 → 系統寄一封啟用信（含一次性連結）→ 同事點連結設密碼。Google / LINE 登入則由同事自行綁定到既有帳號。
 
-**Session**：Auth.js 預設 JWT in cookie；TTL = 30 天滑動。
+**Session**：Better Auth 預設 DB session token + HttpOnly cookie；TTL = 30 天滑動（`expiresIn: 60 * 60 * 24 * 30`）。
 
 ### 4.4 LINE 整合
 
 #### 4.4.1 LINE Login（用於後台同事登入）
 
 - 對應一個 LINE Login Channel
-- Auth.js 自訂 OAuth provider 串 `https://access.line.me/oauth2/v2.1/`
+- Better Auth `genericOAuth` plugin 串 LINE OIDC discovery（callback 路徑為 `/api/auth/oauth2/callback/line`）
 - 來源：LINE Login 文件 https://developers.line.biz/en/docs/line-login/
 
 #### 4.4.2 LINE Messaging API（用於通知 + LINE OA）
@@ -228,7 +228,7 @@
 
 > 完整 SQL DDL 在 plan 階段產出。本節列出主要表與欄位。
 
-### 5.1 `users`（後台同事）
+### 5.1 `user`（後台同事；Better Auth 預設單數命名）
 
 | 欄位 | 型別 | 備註 |
 |---|---|---|
@@ -274,7 +274,7 @@
 | case_id | uuid | FK → cases |
 | from_status | enum | |
 | to_status | enum | |
-| changed_by_user_id | uuid | FK → users |
+| changed_by_user_id | text | FK → user.id（Better Auth 用 text PK） |
 | changed_at | timestamptz | |
 | note | text | nullable |
 
@@ -383,7 +383,7 @@
 |---|---|---|
 | 傳輸加密 | 全站 HTTPS（Vercel 預設） | — |
 | 儲存加密 | Neon AES-256 at-rest（預設） | — |
-| 密碼雜湊 | bcrypt | — |
+| 密碼雜湊 | Better Auth 內建 scrypt | — |
 | 權限控制 | role-based（staff / admin） | + 敏感欄位 JIT 授權 |
 | 存取紀錄 | case_status_history 記錄狀態變更；query_attempts 記錄 LINE OA 查詢嘗試 | + access_log 記錄敏感欄位查看 |
 | 客戶查詢驗證 | LINE OA 查詢需「報修編號 + 手機末四碼」雙重驗證 + rate limiting + 異常告警 | + 客戶端 LINE Login OAuth 取代 |
@@ -415,13 +415,13 @@
 
 | 類別 | 範例 | 存放位置 | F12 可見？ |
 |---|---|---|---|
-| 伺服器機密 | DB 密碼、LINE Channel Secret、Dropbox refresh token、OAuth client_secret、Auth.js secret、Webhook 簽章 | Vercel env（**無** `NEXT_PUBLIC_` 前綴）；只在 API Route / Server Component / Server Action 使用 | ❌ 絕不可見 |
+| 伺服器機密 | DB 密碼、LINE Channel Secret、Dropbox refresh token、OAuth client_secret、Better Auth secret (`BETTER_AUTH_SECRET`)、Webhook 簽章 | Vercel env（**無** `NEXT_PUBLIC_` 前綴）；只在 API Route / Server Component / Server Action 使用 | ❌ 絕不可見 |
 | 公開識別碼 | LINE Login `client_id`、Google `client_id`、LIFF ID | Vercel env（可加 `NEXT_PUBLIC_` 前綴），或寫死於前端 | ✅ 設計上即可見；安全靠 redirect URI 白名單 |
 | 使用者畫面上的資料 | 報修人姓名/手機/Email 等 | Postgres → API → 前端 | ✅ 對「有權限的本人」可見；無權限者打 API 直接被拒 |
 
 #### 6.7.3 認證 Cookie 設定
 
-- Auth.js session cookie 必須設定：
+- Better Auth session cookie 必須設定（`advanced.cookies.session_token.attributes`）：
   - `HttpOnly`（JS 無法讀取，防 XSS 竊取）
   - `Secure`（僅 HTTPS）
   - `SameSite=Lax`（防 CSRF）
@@ -593,14 +593,14 @@
 
 | 層 | 技術 |
 |---|---|
-| Framework | Next.js 15 App Router |
+| Framework | Next.js 16 App Router（React 19 stable、Turbopack 預設） |
 | UI | Tailwind CSS + shadcn/ui |
 | 資料庫 | Postgres（Neon via Vercel Marketplace） |
 | ORM | Drizzle |
-| 認證 | Auth.js v5 |
+| 認證 | Better Auth ^1.6 |
 | LINE | `@line/bot-sdk` + LINE Login OAuth |
 | 媒體 | Dropbox API (App Folder) |
-| Hosting | Vercel Functions（Fluid Compute，Node.js 24） |
+| Hosting | Vercel Functions（Fluid Compute，Node.js 22 LTS） |
 | 排程 | Vercel Cron Jobs |
 | 設定檔 | `vercel.ts`（取代 `vercel.json`） |
 | 套件管理 | pnpm |
@@ -624,7 +624,7 @@
 ### 7.4 設定檔範例（`vercel.ts`）
 
 ```ts
-import { type VercelConfig } from '@vercel/config/v1';
+import { type VercelConfig } from '@vercel/config';
 
 export const config: VercelConfig = {
   framework: 'nextjs',

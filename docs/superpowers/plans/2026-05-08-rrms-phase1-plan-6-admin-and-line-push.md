@@ -46,7 +46,7 @@ src/
 │   │   │   │   ├── actions.ts    # 狀態變更 server action
 │   │   │   │   └── components/
 │   │   │   │       ├── StatusForm.tsx
-│   │   │   │       └── MediaGallery.tsx
+│   │   │   │       └── （MediaGallery.tsx 延後到 Phase 2 — Phase 1 只列 dropbox path 文字）
 │   │   └── ...
 │   └── api/
 │       └── line/
@@ -352,7 +352,7 @@ git commit -m "feat(admin): cases list with search + status filter"
 
 ```tsx
 import { db } from "@/db/client";
-import { cases, caseStatusHistory, caseMedia, users } from "@/db/schema";
+import { cases, caseStatusHistory, caseMedia, user } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import StatusForm from "./components/StatusForm";
@@ -371,10 +371,10 @@ export default async function CaseDetailPage({
   const history = await db
     .select({
       h: caseStatusHistory,
-      u: users,
+      u: user,
     })
     .from(caseStatusHistory)
-    .leftJoin(users, eq(caseStatusHistory.changedByUserId, users.id))
+    .leftJoin(user, eq(caseStatusHistory.changedByUserId, user.id))
     .where(eq(caseStatusHistory.caseId, caseRow.id))
     .orderBy(desc(caseStatusHistory.changedAt));
 
@@ -438,7 +438,7 @@ export default async function CaseDetailPage({
 
 ```ts
 "use server";
-import { auth } from "@/auth/auth";
+import { auth } from "@/lib/auth";
 import { db } from "@/db/client";
 import { cases, caseStatusHistory } from "@/db/schema";
 import { eq } from "drizzle-orm";

@@ -73,10 +73,10 @@ vercel.ts                              # 加入 crons 設定
 
 ## Task 1: 設定 Vercel Cron + 路徑
 
-- [ ] **Step 1：修改 `vercel.ts`**
+- [ ] **Step 1：修改 Plan 1 Task 14 已建立的 `vercel.ts`，加上 `crons` 欄位（不要整檔重建）**
 
 ```ts
-import type { VercelConfig } from "@vercel/config/v1";
+import type { VercelConfig } from "@vercel/config";
 
 export const config: VercelConfig = {
   framework: "nextjs",
@@ -604,8 +604,8 @@ vercel env ls production
 ```
 DATABASE_URL                          ← Plan 3
 DATABASE_URL_UNPOOLED                 ← Plan 3
-AUTH_SECRET                           ← Plan 3
-AUTH_URL                              ← Plan 3 (改為正式 domain)
+BETTER_AUTH_SECRET                    ← Plan 3
+BETTER_AUTH_URL                       ← Plan 3 (改為正式 domain)
 GOOGLE_CLIENT_ID                      ← Task 6
 GOOGLE_CLIENT_SECRET                  ← Task 6
 LINE_LOGIN_CHANNEL_ID                 ← Task 5
@@ -621,11 +621,11 @@ NEXT_PUBLIC_APP_ENV=production
 CRON_SECRET                           ← Task 1
 ```
 
-- [ ] **Step 2：確認 AUTH_URL 改為正式網域**
+- [ ] **Step 2：確認 BETTER_AUTH_URL 改為正式網域**
 
 ```powershell
-vercel env rm AUTH_URL production
-vercel env add AUTH_URL production
+vercel env rm BETTER_AUTH_URL production
+vercel env add BETTER_AUTH_URL production
 # 填 https://rrms.pro080.com
 ```
 

@@ -738,7 +738,7 @@ export const customerRequests = pgTable("customer_requests", {
   status: text("status").notNull().default("open"), // 'open' | 'in_progress' | 'closed'
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp("closed_at", { withTimezone: true }),
-  closedByUserId: uuid("closed_by_user_id").references(() => users.id),
+  closedByUserId: text("closed_by_user_id").references(() => user.id),
   notes: text("notes"),
 });
 ```
@@ -830,14 +830,12 @@ git commit -m "feat(line): customer rights request flow + admin review page"
 - [ ] **Step 1：建立 `__tests__/line-oa/query-bruteforce.spec.ts`**
 
 ```ts
-import { test, expect } from "vitest";
+// 用 @playwright/test 但不開瀏覽器；當作 node 環境跑
+import { test, expect } from "@playwright/test";
 import { recordAttempt, userIsLocked } from "@/lib/line/rate-limit-query";
-import { db } from "@/db/client";
-import { queryAttempts } from "@/db/schema";
 
 test("user is locked after 5 failed attempts within 24h", async () => {
   const userId = "U_test_brute_" + Date.now();
-  // 清 prior attempts
   // 連續 5 次 failed
   for (let i = 0; i < 5; i++) {
     await recordAttempt(userId, "RPR-20260508001", "0000", false);
@@ -846,12 +844,12 @@ test("user is locked after 5 failed attempts within 24h", async () => {
 });
 ```
 
-> 註：本測試直接呼叫 lib，不經 LINE webhook，因為 webhook 簽章難以模擬。Plan 8 增加端到端 webhook 驗證。
+> 註：本測試直接呼叫 lib，不經 LINE webhook（webhook 簽章難以模擬）。我們重用 Plan 1 / Plan 3 已安裝的 Playwright 而不引入 Vitest，避免測試框架碎片化。Plan 8 會加端到端 webhook 驗證。
 
 - [ ] **Step 2：跑測試 + commit**
 
 ```powershell
-pnpm exec vitest run __tests__/line-oa/query-bruteforce.spec.ts
+pnpm exec playwright test __tests__/line-oa/query-bruteforce.spec.ts
 git add __tests__
 git commit -m "test(security): red-team query brute force locks user after 5 fails"
 ```
@@ -863,7 +861,7 @@ git commit -m "test(security): red-team query brute force locks user after 5 fai
 - [ ] **Step 1：建立 `__tests__/line-oa/case-no-enumeration-alert.spec.ts`**
 
 ```ts
-import { test, expect } from "vitest";
+import { test, expect } from "@playwright/test";
 import {
   recordAttempt,
   caseNoIsBeingProbed,
@@ -881,7 +879,7 @@ test("same case_no probed by 5 different users triggers alert flag", async () =>
 - [ ] **Step 2：commit**
 
 ```powershell
-pnpm exec vitest run
+pnpm exec playwright test __tests__/line-oa/case-no-enumeration-alert.spec.ts
 git add __tests__
 git commit -m "test(security): red-team case_no enumeration triggers staff alert"
 ```

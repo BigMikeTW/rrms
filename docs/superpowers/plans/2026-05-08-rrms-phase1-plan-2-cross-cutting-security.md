@@ -518,7 +518,7 @@ git checkout main
 | Secret | 輪替方式 | 影響 |
 |---|---|---|
 | `DATABASE_URL` | Neon dashboard 重設密碼 → 更新 Vercel env | 重新部署觸發新 connection |
-| `AUTH_SECRET` | 自行生成 32 字元 random → 更新 Vercel env | 所有現有 session 失效，使用者需重新登入 |
+| `BETTER_AUTH_SECRET` | 自行生成 32 字元 random → 更新 Vercel env | 所有現有 session 失效，使用者需重新登入 |
 | `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` | LINE Developers Console reissue | 推播暫斷直到 token 更新；舊 token 30 分鐘內失效 |
 | `LINE_MESSAGING_CHANNEL_SECRET` | LINE Developers Console reissue | webhook 簽章驗證會用新 secret |
 | `DROPBOX_REFRESH_TOKEN` | Dropbox App Console revoke + 重新 OAuth | 媒體上傳暫停，需在後台重綁 |
