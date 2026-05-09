@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.claude.com/schemas/claude-code/settings.json",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/post-review-scan.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/post-review-scan.sh\" || true"
+          }
+        ]
+      }
+    ]
+  }
+}
