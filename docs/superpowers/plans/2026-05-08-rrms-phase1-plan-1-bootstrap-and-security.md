@@ -309,13 +309,10 @@ git commit -m "chore: enable TypeScript strict mode"
 - [ ] **Step 1：執行 shadcn init**
 
 ```powershell
-pnpm dlx shadcn@latest init
+pnpm dlx shadcn@latest init --defaults --yes --force
 ```
 
-互動選項：
-- Style: **New York**（個人偏好可選 Default）
-- Base color: **Neutral**
-- CSS variables: **Yes**
+> **shadcn 4.7+ CLI 變動**：舊「Style: New York」preset 已不存在。CLI 預設使用 `base-nova` preset（底層 primitive 從 Radix 改為 Base UI）。`--defaults` 採用：preset = `base-nova`、baseColor = `neutral`、cssVariables = true，視覺上等同舊 New York Neutral 中性灰階。若要強制 Radix，加 `-b radix`。
 
 - [ ] **Step 2：加 Button 元件**
 
@@ -348,7 +345,7 @@ export default function Home() {
 ```powershell
 pnpm dev
 ```
-瀏覽器看到藍底白字按鈕（New York / Neutral 樣式）。
+瀏覽器看到中性灰階按鈕（base-nova / Neutral 樣式；shadcn 4.7+ 預設）。
 
 - [ ] **Step 5：commit**
 
@@ -1394,7 +1391,7 @@ git commit -m "docs: write developer README with security model & workflow"
 ```ts
 // vercel.ts
 // 對應 spec 7.4
-import type { VercelConfig } from '@vercel/config';
+import type { VercelConfig } from '@vercel/config/v1';
 
 export const config: VercelConfig = {
   framework: 'nextjs',

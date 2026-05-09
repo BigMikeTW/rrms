@@ -76,7 +76,7 @@ vercel.ts                              # 加入 crons 設定
 - [ ] **Step 1：修改 Plan 1 Task 14 已建立的 `vercel.ts`，加上 `crons` 欄位（不要整檔重建）**
 
 ```ts
-import type { VercelConfig } from "@vercel/config";
+import type { VercelConfig } from "@vercel/config/v1";
 
 export const config: VercelConfig = {
   framework: "nextjs",
