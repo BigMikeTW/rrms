@@ -1,0 +1,86 @@
+# What:  RRMS CI pipeline. Runs four parallel jobs on GitHub-hosted runners:
+#        (1) `secrets-scan` — gitleaks on full git history, (2) `lint-and-types`
+#        — ESLint (max-warnings=0) + `tsc --noEmit`, (3) `bundle-scan` — Next
+#        production build followed by `pnpm scan:bundle` to detect secrets
+#        leaked into client chunks, (4) `semgrep` — OWASP Top Ten static
+#        analysis. All four must be green before a PR can merge.
+# Why:   Layer 4 of the project's defense-in-depth model (spec §6.7.4). Layers
+#        1 (Claude Code hooks) and 2 (Husky pre-commit) live on developer
+#        machines and can be bypassed with `git commit --no-verify` or by
+#        disabling Claude. Layer 4 runs on GitHub's infrastructure, so it
+#        cannot be bypassed by any local action — every push and PR is
+#        re-checked from a clean checkout. Layer 3 is the protected-branch
+#        rule on `main` that requires these checks to pass.
+# Where: GitHub-hosted `ubuntu-latest` runners (semgrep additionally uses the
+#        `semgrep/semgrep` container). Triggered by GitHub on the events
+#        below; results surface in the repo Actions tab and on PR pages.
+# When:  Every push to `main`, every push to active development branches
+#        (`feat/**`, `fix/**`, `docs/**`, `chore/**`), and every pull request
+#        targeting `main`.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    # Why: also run on feature/fix/docs/chore branches so developers get
+    # feedback on every push during the 1-PR-per-Plan workflow, well before
+    # the PR is opened. Without this, CI only fires once at PR-open time.
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+      - "docs/**"
+      - "chore/**"
+
+jobs:
+  secrets-scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-path: .gitleaks.toml
+
+  lint-and-types:
+    name: ESLint + tsc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  bundle-scan:
+    name: Client bundle scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm scan:bundle
+
+  semgrep:
+    name: semgrep OWASP
+    runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep
+    steps:
+      - uses: actions/checkout@v6
+      - run: semgrep --config p/owasp-top-ten --error
