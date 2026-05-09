@@ -1048,7 +1048,7 @@ git update-index --add --chmod=+x scripts/post-review-scan.sh
 
 ```json
 {
-  "$schema": "https://docs.claude.com/schemas/claude-code/settings.json",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
     "Stop": [
       {
