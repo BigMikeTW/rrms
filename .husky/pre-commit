@@ -1,0 +1,24 @@
+# What:  Layer 2 pre-commit hook of the RRMS defense-in-depth pipeline (spec 6.7.4).
+#        Runs three guards before any commit lands locally, IN THIS ORDER:
+#          1) gitleaks     -> secret scan against the staged content (redacted).
+#                             Runs FIRST so a detected secret aborts before
+#                             prettier --write mutates any staged file (which
+#                             would leave the working tree dirty after abort).
+#          2) lint-staged  -> ESLint (max-warnings=0) + Prettier on staged files
+#          3) tsc          -> whole-project TypeScript typecheck
+# Why:   Defense-in-depth has 3 layers: L1 IDE/format-on-save, L2 pre-commit
+#        (this hook), L3 CI/branch protection. L2 stops the kill-chain where it
+#        is cheapest to recover: BEFORE bad code or leaked secrets enter local
+#        history (which would otherwise have to be force-pushed/scrubbed).
+#        Typecheck runs on the WHOLE project, not just staged files, because
+#        TypeScript errors are often non-local: a type change in file A breaks
+#        file B that was not staged. Staged-only typecheck would miss that.
+# Where: Executed automatically by Git via core.hooksPath=.husky/_ (set by
+#        `husky init`). Husky 9 style: no shebang, no sourcing of husky.sh.
+# When:  Fires on every `git commit` on every branch in this repo. To bypass
+#        in a true emergency only, use `git commit --no-verify` (and tell the
+#        team why in the PR description).
+set -eu
+gitleaks protect --staged --redact --config .gitleaks.toml
+pnpm exec lint-staged
+pnpm typecheck
