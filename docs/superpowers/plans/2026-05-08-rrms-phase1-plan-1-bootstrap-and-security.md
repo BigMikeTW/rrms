@@ -4,23 +4,23 @@
 
 > **給人類使用者**：本計畫為 Phase 1 第 1/7 份計畫。完成後產出可運作的 Next.js 專案骨架 + 五層縱深防禦中 L1/L2/L4 三道必要防線，並通過紅隊測試。後續計畫見本檔尾段。
 
-**Goal:** 建立 RRMS 專案的 Next.js 15 骨架，部署 L1（Claude Code Hooks）+ L2（Pre-commit）+ L4（GitHub Actions CI）三層獨立的安全防護，並通過故意植入 secret 的紅隊測試證明三層皆能擋下，建立一個「再寫任何 feature code 之前，安全防線已經先到位」的開發環境。
+**Goal:** 建立 RRMS 專案的 Next.js 16 骨架，部署 L1（Claude Code Hooks）+ L2（Pre-commit）+ L4（GitHub Actions CI）三層獨立的安全防護，並通過故意植入 secret 的紅隊測試證明三層皆能擋下，建立一個「再寫任何 feature code 之前，安全防線已經先到位」的開發環境。
 
-**Architecture:** Next.js 15 App Router + TypeScript + Tailwind v4 + shadcn/ui，部署於 Vercel；專案根目錄掛 Husky pre-commit hook（gitleaks + ESLint + tsc）；GitHub Actions 執行同樣檢查作為 PR required status check；專案內 `.claude/settings.json` 設定 `Stop` + `PostToolUse(matcher=Task)` hooks 連動 `scripts/post-review-scan.sh`；自訂 ESLint rules 禁止 `NEXT_PUBLIC_*_SECRET / *_KEY / *_TOKEN` 命名，並禁止前端 import 第三方 server SDK；自訂 bundle scan script 確認 client output 不含 secret。
+**Architecture:** Next.js 16 App Router + TypeScript + Tailwind v4 + shadcn/ui，部署於 Vercel；專案根目錄掛 Husky pre-commit hook（gitleaks + ESLint + tsc）；GitHub Actions 執行同樣檢查作為 PR required status check；專案內 `.claude/settings.json` 設定 `Stop` + `PostToolUse(matcher=Task)` hooks 連動 `scripts/post-review-scan.sh`；自訂 ESLint rules 禁止 `NEXT_PUBLIC_*_SECRET / *_KEY / *_TOKEN` 命名，並禁止前端 import 第三方 server SDK；自訂 bundle scan script 確認 client output 不含 secret。
 
 **Tech Stack:**
-- Node.js ≥ 20.x（Vercel 預設執行 Node 24 LTS，本機開發任 20+ 即可）
-- pnpm 9.x
-- Next.js 15.x（App Router）
-- React 19
+- Node.js 22 LTS（pnpm 11 強制最低；使用者本機已有 Node 24，Vercel CI 設 `node-version: '22'`）
+- pnpm 10.x 或 11.x（latest）
+- Next.js 16.x（App Router、React 19 stable、Turbopack 預設、`next build` **不再自動跑 lint** — CI 必須獨立 `pnpm lint`）
+- React 19（stable，由 Next.js 16 提供）
 - TypeScript 5.x（strict mode）
-- Tailwind CSS v4
-- shadcn/ui
-- ESLint 9 (flat config)
-- Husky 9.x + lint-staged 15.x
-- gitleaks 8.x
-- semgrep（CI only）
-- GitHub Actions
+- Tailwind CSS v4（**沒有 `tailwind.config.js`，theme 用 `app/globals.css` 內 `@theme {}`**；shadcn init 自動處理）
+- shadcn/ui（package 已從 `shadcn-ui` 改名為 `shadcn`）
+- ESLint 10（flat config；v9 也相容）
+- Husky 9.x（用 `husky init`，不是 `husky install`）+ lint-staged 17.x（v10+ 自動 `git add`，**不要在 task 中手動 add**）
+- gitleaks 8.30.x
+- semgrep（CI only，**用 `semgrep scan` 本地模式**，不要 `semgrep ci`，以免要登入雲端 AppSec Platform、把代碼上傳到第三方違反個資法）
+- GitHub Actions（actions/checkout@v6、setup-node@v4）
 - Vercel CLI（部分步驟手動於網頁操作）
 
 **版本鎖定政策**：每項依賴在 Task 0 的 research 步驟驗證當下實際 latest stable 版本，若 spec 中所列版本與官方不符，以官方為準並回報。
@@ -96,8 +96,8 @@ RRMS/
 
 | 工具 | 用途 | 檢查指令 | 下載 |
 |---|---|---|---|
-| Node.js ≥ 20 | JavaScript runtime | `node --version` | https://nodejs.org/（裝 LTS） |
-| pnpm 9 | 套件管理 | `pnpm --version` | 在 PowerShell 跑 `npm install -g pnpm` |
+| Node.js 22 LTS（22+） | JavaScript runtime；pnpm 11 強制最低 | `node --version` | https://nodejs.org/（裝 22 LTS） |
+| pnpm 10 或 11 | 套件管理 | `pnpm --version` | 在 PowerShell 跑 `npm install -g pnpm@latest` |
 | Git | 版本控制 | `git --version` | https://git-scm.com/（已有 git，跳過） |
 | gh（GitHub CLI） | 建 repo / branch protection 命令式設定 | `gh --version` | https://cli.github.com/ |
 | gitleaks | secret 掃描 | `gitleaks version` | https://github.com/gitleaks/gitleaks/releases（下載 Windows zip，放到 PATH 中的目錄） |
@@ -198,7 +198,7 @@ git commit -m "docs: research bootstrap dependency versions"
 
 ---
 
-## Task 1: 初始化 Next.js 15 專案骨架
+## Task 1: 初始化 Next.js 16 專案骨架
 
 **Files:**
 - Create: `package.json`、`tsconfig.json`、`next.config.ts`、`src/app/{layout,page}.tsx`、`src/app/globals.css`、`postcss.config.mjs`、`tailwind.config.ts`（皆由 create-next-app 產生）
@@ -249,7 +249,7 @@ pnpm dev
 
 ```powershell
 git add .
-git commit -m "feat: initialize Next.js 15 + Tailwind + TypeScript scaffold"
+git commit -m "feat: initialize Next.js 16 + Tailwind + TypeScript scaffold"
 ```
 
 ---
@@ -1299,7 +1299,7 @@ Phase 1：簡易報修系統，公開表單 + 後台管理 + LINE 通知。
 
 ## Tech Stack
 
-Next.js 15 (App Router) · TypeScript strict · Tailwind v4 · shadcn/ui · Drizzle · Neon · Auth.js v5 · LINE Messaging API · Dropbox API · Vercel Functions
+Next.js 16 (App Router) · TypeScript strict · Tailwind v4 · shadcn/ui · Drizzle · Neon · Better Auth · LINE Messaging API · Dropbox API · Vercel Functions
 
 ## 開發前必讀
 
