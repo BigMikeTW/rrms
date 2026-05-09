@@ -20,6 +20,21 @@
 
 name: CI
 
+# Defense-in-depth: explicit minimum permissions on GITHUB_TOKEN.
+# All 4 jobs only need to read repo contents; none push, comment on PRs,
+# or write to issues. Granting only `contents: read` reduces blast radius
+# if any third-party action in the supply chain is compromised.
+permissions:
+  contents: read
+
+# Cancel any in-progress run on the same branch when a new push lands.
+# Saves CI minutes and keeps queue depth low; the latest commit is what
+# matters. main keeps cancel-in-progress: false to verify every commit
+# (intentional belt-and-suspenders for protected branch).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 on:
   pull_request:
     branches: [main]
@@ -84,7 +99,11 @@ jobs:
     name: semgrep OWASP
     runs-on: ubuntu-latest
     container:
-      image: returntocorp/semgrep
+      # Pinned image tag (no :latest) for reproducibility. The semgrep org
+      # was renamed from `returntocorp` to `semgrep` upstream; both still
+      # work but `semgrep/semgrep` is the canonical name. Bump this tag in
+      # a separate PR when adopting a newer semgrep release.
+      image: semgrep/semgrep:1.86.0
     steps:
       - uses: actions/checkout@v6
       - run: semgrep --config p/owasp-top-ten --error
