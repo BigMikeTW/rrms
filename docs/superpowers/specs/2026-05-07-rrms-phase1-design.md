@@ -232,7 +232,7 @@
 
 | 欄位 | 型別 | 備註 |
 |---|---|---|
-| id | uuid | PK |
+| id | text | PK（Better Auth 預設文字 ID；對應 Plan 3 schema） |
 | email | text | unique |
 | password_hash | text | nullable（用 OAuth 者可為 null） |
 | name | text | |
@@ -499,8 +499,7 @@
 |---|---|---|
 | `secrets-scan` | `gitleaks detect --source . --redact`（全 history 掃） | ✅ |
 | `lint-and-types` | `pnpm lint && pnpm typecheck` | ✅ |
-| `unit-tests` | Vitest | ✅ |
-| `e2e-smoke` | Playwright 主要 happy path | ✅ |
+| `unit-and-e2e-tests` | Playwright（含單元測試與 happy-path 紅隊；統一一套框架，不引入 Vitest） | ✅ |
 | `bundle-scan` | `next build` 後 grep `.next/static/**` 不含任何 secret pattern | ✅ |
 | `semgrep` | OWASP top 10 規則集 | ✅ |
 
@@ -553,7 +552,7 @@
 - [ ] `.claude/settings.json` 設定 `Stop` + `PostToolUse(matcher=Task)` 兩個 hook
 - [ ] 安裝 Husky + lint-staged，掛 pre-commit
 - [ ] 自訂 ESLint plugin（NEXT_PUBLIC_*_SECRET 偵測 + 前端禁 import 第三方 SDK 規則）
-- [ ] gitleaks 設定檔（`.gitleaks.toml`）含 LINE Channel Secret、Dropbox token、Auth.js secret 的客製 pattern
+- [ ] gitleaks 設定檔（`.gitleaks.toml`）含 LINE Channel Secret、Dropbox token、Better Auth secret 的客製 pattern
 - [ ] GitHub Actions workflow `.github/workflows/ci.yml`
 - [ ] GitHub Branch Protection 設 required status checks
 - [ ] Bundle scan script（next build 後比對 client output）
@@ -610,7 +609,7 @@
 | 環境 | 觸發 | 域名 | DB | LINE Channel |
 |---|---|---|---|---|
 | Production | `main` 分支 push | `rrms.pro080.com` | Neon main branch | 正式 LINE OA + 正式 LINE Login |
-| Preview/Dev | feature 分支 push、PR | `<branch>-<project>.vercel.app` | Neon dev branch | 測試 LINE OA + 測試 LINE Login |
+| Preview/Dev | feature 分支 push、PR | `rrms-dev.pro080.com`（PR 共用此固定預覽網址；Vercel 自動發的 `*.vercel.app` 第一次 deploy 暫用） | Neon dev branch | 測試 LINE OA + 測試 LINE Login |
 
 > Neon 的 branching 功能讓兩環境用同一專案的不同 branch，免費額度足夠。
 

@@ -171,7 +171,7 @@ updates:
           - "minor"
           - "patch"
 
-  # GitHub Actions 自身的版本（example: actions/checkout@v4）
+  # GitHub Actions 自身的版本（example: actions/checkout@v6）
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -306,7 +306,7 @@ jobs:
           max_timeout: 600
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.15.0
@@ -378,7 +378,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.15.0
