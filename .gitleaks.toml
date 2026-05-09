@@ -1,0 +1,76 @@
+# What:  RRMS gitleaks configuration. Extends gitleaks built-in rules with
+#        four custom regex rules covering the project's secret families:
+#        (1) LINE Channel Secret (32-char hex), (2) LINE Channel Access Token
+#        (long base64-ish), (3) Dropbox API token (sl. prefix + >=50 chars),
+#        (4) Better Auth / NextAuth / Auth.js secret env vars. Includes a
+#        global allowlist for .env.example, test fixtures, and this config
+#        file itself so legitimate placeholder values do not register as
+#        leaks.
+# Why:   Implements spec section 6.7.4 Layer 2 (pre-commit hook) and Layer 4
+#        (CI gitleaks scan) of the defense-in-depth secret-leak prevention
+#        strategy. Built-in rules alone do not know about LINE Messaging API
+#        credentials, Dropbox OAuth tokens, or our chosen Better Auth env var
+#        names, so without these custom rules a developer could commit any of
+#        those four secret families with no automated warning. Catching them
+#        before they reach origin is critical because once a secret is in git
+#        history it must be rotated, not just deleted.
+# Where: Repository root (.gitleaks.toml). Consumed by:
+#        - Local pre-commit hook (Layer 2) blocking commits with new secrets.
+#        - GitHub Actions CI workflow (Layer 4) scanning every PR + push.
+#        - Claude Code post-edit hook scanning AI-generated code.
+#        - Ad-hoc developer runs: `gitleaks detect --source . --no-git`.
+# When:  Loaded on every commit attempt (pre-commit), every CI run on PR /
+#        push to main, every Claude Code edit hook trigger, and any manual
+#        gitleaks invocation. Updated only when adding a new secret family
+#        (e.g., a new third-party integration) or tightening an existing
+#        regex. Allowlist entries grow only with explicit justification.
+
+title = "RRMS gitleaks rules"
+
+# 沿用內建規則
+[extend]
+useDefault = true
+
+# 自訂 RRMS 相關 rules
+[[rules]]
+id = "line-channel-secret"
+description = "LINE Channel Secret (32 char hex)"
+regex = '''(?i)channel[_\-]?secret[\s'"=:]+([a-f0-9]{32})'''
+tags = ["line", "secret"]
+
+[[rules]]
+id = "line-channel-access-token"
+description = "LINE Channel Access Token (long token)"
+regex = '''(?i)channel[_\-]?access[_\-]?token[\s'"=:]+([A-Za-z0-9+/=]{100,})'''
+tags = ["line", "secret"]
+
+[[rules]]
+id = "dropbox-token"
+description = "Dropbox API token"
+regex = '''sl\.[A-Za-z0-9_-]{50,}'''
+tags = ["dropbox", "secret"]
+
+[[rules]]
+id = "auth-secret"
+description = "Better Auth / NextAuth / Auth.js secret"
+regex = '''(?i)(BETTER_AUTH_SECRET|NEXTAUTH_SECRET|AUTH_SECRET)[\s=:]+["']?([A-Za-z0-9+/=]{32,})["']?'''
+tags = ["auth", "secret"]
+
+# 全域 allowlist（別把 .env.example 跟測試 fixture 當成洩漏）
+# - .env.example：占位符範例值，不是真 secret
+# - __tests__/__fixtures__：紅隊測試用的偽 secret
+# - .gitleaks.toml：本檔案的 regex literal 會被自己的規則 match
+# - .next/：Next.js dev/build 產物 (encryptionKey, previewModeSigningKey)
+#   為每次 build 隨機產生、不入 git，純 local artifact
+# - docs/superpowers/plans/2026-05-08-rrms-phase1-plan-1-bootstrap-and-security.md：
+#   此單一檔案內含示範用偽 secret（與 fixture 相同的 placeholder）；
+#   只放行此檔，其他 7 份 plan 仍受規則保護，未來若有人不慎貼真 secret 仍會被擋下
+[allowlist]
+description = "Skip example files, test fixtures, build artifacts, and the single plan file with placeholder secrets"
+paths = [
+  '''\.env\.example$''',
+  '''__tests__/__fixtures__/.*''',
+  '''\.gitleaks\.toml$''',
+  '''^\.next/.*''',
+  '''^docs/superpowers/plans/2026-05-08-rrms-phase1-plan-1-bootstrap-and-security\.md$''',
+]
