@@ -16,6 +16,9 @@
 - `actions/github-script`（自動開 issue）
 - GitHub REST API（透過 `gh` CLI 開啟 vulnerability alerts）
 
+> **⚠ 必做的順手修：GitHub Actions Node 20 deprecation**
+> Plan 1 落地的 `ci.yml` 用了 `gitleaks-action@v2`、`pnpm/action-setup@v4`、`actions/setup-node@v4` — 這三個 action 的 underlying Node 20 runtime 將於 **2026-06-02** 停用。Plan 2 第一個 task 在動 `ci.yml` 之前，先 fetch 各 action 的最新 release，看是否已有 Node 24 版本可升；若無，加 workflow-level env：`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'` 提前 opt-in。Dependabot 設好後也會自動偵測這條並開升級 PR。
+
 ---
 
 ## Spec 對照

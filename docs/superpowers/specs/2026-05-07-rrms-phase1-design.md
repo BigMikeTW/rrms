@@ -623,7 +623,7 @@
 ### 7.4 設定檔範例（`vercel.ts`）
 
 ```ts
-import { type VercelConfig } from '@vercel/config';
+import { type VercelConfig } from '@vercel/config/v1';
 
 export const config: VercelConfig = {
   framework: 'nextjs',
