@@ -1484,7 +1484,7 @@ Plan 1 完成後依序進入（總共 8 份計畫，本計畫為第 1 份）：
 | # | 計畫 | 主要內容 | 預估 task 數 |
 |---|---|---|---|
 | 2 | Cross-Cutting Security Platform | Dependabot + OWASP ZAP CI + 排程掃描 + 自動開 issue | ~10 |
-| 3 | Database + Auth Foundation | Drizzle schema + Auth.js 三 provider | ~12 |
+| 3 | Database + Auth Foundation | Drizzle schema + Better Auth 三 provider | ~12 |
 | 4 | Public Form + PDPA Compliance | `/report` 表單 + 隱私同意版本管理 + 案件編號 | ~10 |
 | 5 | Dropbox Media Pipeline | server-side 簽 upload URL + 瀏覽器直傳 | ~8 |
 | 6 | Admin Backend + LINE Notifications | `/admin` 全套 + 狀態變更觸發 LINE push | ~14 |

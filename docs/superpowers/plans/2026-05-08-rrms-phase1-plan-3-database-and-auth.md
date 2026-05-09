@@ -9,8 +9,8 @@
 **Architecture:** Drizzle 直接匯出 TypeScript schema；Better Auth 走 `drizzleAdapter`；Email/密碼用 `emailAndPassword`（內建 scrypt，無 bcrypt 依賴）；Google 走內建 `socialProviders.google`；LINE Login 走 `genericOAuth` plugin 配 OIDC discovery；session DB token + HttpOnly cookie；middleware 在 `/admin/*` 強制 auth + role-based 授權（admin plugin）。
 
 **Tech Stack:**
-- `drizzle-orm@^0.45.2`
-- `drizzle-kit@^0.31.10`（dev）
+- `drizzle-orm@0.45.2`（exact pin；pre-1.0，禁 caret 以免 schema 漂移）
+- `drizzle-kit@0.31.10`（dev；exact pin，理由同上）
 - `@neondatabase/serverless`（Neon driver，serverless 環境最佳）
 - `better-auth@^1.6`（含內建 adapter；不需要 `@auth/drizzle-adapter`）
 - `@better-auth/cli`（dev，schema generate）
@@ -30,7 +30,7 @@
 | Spec 章節 | 本計畫覆蓋 |
 |---|---|
 | 4.3 認證（Email/密碼、Google、LINE Login） | Task 8-10 |
-| 5.1 users / 5.2 cases / 5.3 case_status_history / 5.4 case_media / 5.5 line_bindings / 5.6 consent_versions / 5.7 query_attempts | Task 3-5 |
+| 5.1 user / 5.2 cases / 5.3 case_status_history / 5.4 case_media / 5.5 line_bindings / 5.6 consent_versions / 5.7 query_attempts | Task 3-5 |
 | 6.7.3 認證 Cookie 設定 | Task 7 + Task 11 |
 | 6.7.4 安全維護：scrypt 密碼雜湊（Better Auth 內建）、role-based 權限控制 | Task 8 + Task 14 |
 | 攻擊測試 Cookie HttpOnly / Auth 權限隔離 / CSRF（SameSite） | Task 14 |
@@ -42,7 +42,7 @@
 ```
 src/
 ├── db/
-│   ├── schema.ts                      # 全部 Drizzle schema（含 RRMS 7 表 + Better Auth 4 表）
+│   ├── schema.ts                      # 全部 Drizzle schema（含 RRMS 6 表 + Better Auth 4 表；invitations 已被 verification 吸收）
 │   ├── client.ts                      # server-only Drizzle client
 │   └── enums.ts                       # case status enum 等
 ├── lib/
@@ -156,8 +156,8 @@ vercel env pull .env.local
 - [ ] **Step 1：安裝套件（pin 版本）**
 
 ```powershell
-pnpm add drizzle-orm@^0.45.2 @neondatabase/serverless
-pnpm add -D drizzle-kit@^0.31.10
+pnpm add drizzle-orm@0.45.2 @neondatabase/serverless
+pnpm add -D drizzle-kit@0.31.10
 ```
 
 - [ ] **Step 2：建立 `drizzle.config.ts`**
@@ -493,7 +493,7 @@ export const queryAttempts = pgTable(
 
 ```powershell
 git add src/db/
-git commit -m "feat(db): define Drizzle schema for RRMS 7 + Better Auth 4 tables"
+git commit -m "feat(db): define Drizzle schema for RRMS 6 + Better Auth 4 tables"
 ```
 
 ---
@@ -520,7 +520,7 @@ pnpm db:generate
 ```powershell
 pnpm db:push
 ```
-互動式 confirm 後，Neon DB 內會建出 11 張表（RRMS 7 + Better Auth 4）。
+互動式 confirm 後，Neon DB 內會建出 10 張表（RRMS 6 + Better Auth 4；原本的 invitations 表已被 Better Auth 的 verification 表吸收）。
 
 - [ ] **Step 4：用 drizzle-kit studio 視覺驗證**
 
@@ -1413,6 +1413,7 @@ git commit -m "test(security): red-team auth — cookie HttpOnly + privilege esc
 ## Plan 3 驗收條件
 
 - [ ] 10 張表已在 Neon DB 建立（drizzle studio 看得到：RRMS 6 + Better Auth 4，原本的 `invitations` 已被 `verification` 吸收）
+  > **Phase 1 軌跡**：本計畫產出 10 表 → Plan 4 加 `rate_limit_buckets` → Plan 7 加 `oa_conversations` 與 `customer_requests` → Phase 1 結束時共 **13 表**。
 - [ ] Better Auth 三 provider 都能登入（Email/Google/LINE 至少各試一次）
 - [ ] Seed admin 能登入；可邀請新同事；新同事點 magic link 後自動登入
 - [ ] Staff 角色看不到「帳號管理」連結；直接打 /admin/users 被重導

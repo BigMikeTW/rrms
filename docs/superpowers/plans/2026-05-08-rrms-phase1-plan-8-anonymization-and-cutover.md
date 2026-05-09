@@ -294,7 +294,10 @@ curl https://<preview-url>/api/cron/anonymize-expired
 - [ ] **Step 1：建立 `__tests__/cron/anonymize.spec.ts`**
 
 ```ts
-import { test, expect } from "vitest";
+// 採用 @playwright/test 的 test runner 跑這支 server-side unit test，
+// 與 Plan 3 / Plan 7 共用同一套測試框架，避免引入第二套（Vitest）。
+// 透過 `pnpm exec playwright test --project=node ...` 執行（playwright.config 內已定義 node-only project）。
+import { test, expect } from "@playwright/test";
 import { db } from "@/db/client";
 import { cases, caseMedia } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -368,7 +371,7 @@ test("case closed < 2 years ago is NOT anonymized", async () => {
 - [ ] **Step 2：跑測試 + commit**
 
 ```powershell
-pnpm exec vitest run __tests__/cron/anonymize.spec.ts
+pnpm exec playwright test __tests__/cron/anonymize.spec.ts
 git add __tests__
 git commit -m "test(security): red-team anonymization respects 2-year retention"
 ```
@@ -680,6 +683,7 @@ git push origin v1.0.0-phase1
 - [ ] 上線檢查清單全部打勾
 - [ ] 公開示範：在 production domain 完整跑一次「客戶報修 → 員工接收 → 改狀態 → 客戶查詢」
 - [ ] git tag `v1.0.0-phase1` 已 push
+- [ ] **Phase 1 資料庫終態 13 表已驗證**（drizzle studio 看得到：Plan 3 產 10 表 + Plan 4 加 `rate_limit_buckets` + Plan 7 加 `oa_conversations`、`customer_requests` = 13）
 
 ---
 
