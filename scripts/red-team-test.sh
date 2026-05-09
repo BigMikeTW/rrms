@@ -46,6 +46,10 @@ PAYLOAD_HI="0123456789012345"
 PAYLOAD_LO="6789012345678abc"
 FAKE_SECRET="${PAYLOAD_NAME}=${PAYLOAD_HI}${PAYLOAD_LO}"
 TEST_FILE="red-team-secret.txt"
+# Portable temp dir: $TMPDIR on macOS/Linux, /tmp as fallback on Git Bash for
+# Windows. Avoids hardcoded /tmp which doesn't exist in some PowerShell-launched
+# bash contexts.
+LOG_DIR="${TMPDIR:-/tmp}"
 PASS=0
 FAIL=0
 
@@ -55,11 +59,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Defensive guard: refuse to run if a leftover test file is already tracked
+# in git from a previously interrupted run. Preserves test integrity (a
+# polluted index would skew the L2 result).
+if git ls-files --error-unmatch "$TEST_FILE" >/dev/null 2>&1; then
+  echo "ERROR: '$TEST_FILE' is already tracked in git (leftover from prior run)" >&2
+  echo "Clean it up first:  git rm --cached '$TEST_FILE' && git commit -m 'chore: drop leftover red-team file'" >&2
+  exit 3
+fi
+
 # === Layer 2: pre-commit ===
 echo "=== L2: pre-commit hook ==="
 echo "$FAKE_SECRET" > "$TEST_FILE"
-git add "$TEST_FILE"
-if git commit -m "RED TEAM SHOULD FAIL" 2>&1 | tee /tmp/red-l2.log; then
+# Use -f so that if .gitignore ever covers the path the stage still happens;
+# otherwise a silent no-op stage would let `git commit` succeed against an
+# empty index and report a false L2 FAIL.
+git add -f "$TEST_FILE"
+if git commit -m "RED TEAM SHOULD FAIL" 2>&1 | tee "$LOG_DIR/red-l2.log"; then
   echo "L2 FAIL: pre-commit allowed secret to commit"
   FAIL=$((FAIL+1))
 else
@@ -70,7 +86,7 @@ git restore --staged "$TEST_FILE"
 
 # === Layer 1: Claude Code Stop hook (post-review-scan.sh direct) ===
 echo "=== L1: Claude Code Stop hook (post-review-scan.sh direct) ==="
-if bash scripts/post-review-scan.sh > /tmp/red-l1.log 2>&1; then
+if bash scripts/post-review-scan.sh > "$LOG_DIR/red-l1.log" 2>&1; then
   echo "L1 FAIL: post-review-scan exited 0 with secret present"
   FAIL=$((FAIL+1))
 else
@@ -88,7 +104,7 @@ fi
 echo "=== L4: GitHub Actions ==="
 echo "L4 MANUAL: Use Task 9 Step 3 procedure to verify; not automated here."
 
-cleanup
+# Note: cleanup runs automatically via the EXIT trap; no explicit call needed.
 
 echo
 echo "=== Summary ==="
