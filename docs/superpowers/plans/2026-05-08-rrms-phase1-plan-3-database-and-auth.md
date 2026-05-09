@@ -605,6 +605,7 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 12, // spec 6.7.4 password strength
     autoSignIn: false, // admins are invited; self-signup disabled (Task 12)
+    disableSignUp: true, // RRMS Phase 1 hard rule: only magicLink-driven user creation
   },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days (override Better Auth's 7-day default per RRMS spec)
@@ -1053,7 +1054,7 @@ export async function inviteUser(formData: FormData) {
   },
 ```
 
-> 註：要在邀請流程中讓 admin 直接邀請成 admin role，可改寫法：在 `inviteUser` server action 拿到 magic-link 完成回呼後，立刻呼叫 `auth.api.setRole({ body: { userId, role }, headers })`（admin plugin 提供），把該使用者升成 admin。Phase 1 簡化做法：**所有邀請來的人都先是 staff，需要升 admin 由現有 admin 在「帳號管理」頁面手動設**。下面 Task 13 的 UI 會包這個動作。
+> 註：要在邀請流程中讓 admin 直接邀請成 admin role，可改寫法：在 `inviteUser` server action 拿到 magic-link 完成回呼後，立刻呼叫 `auth.api.setRole({ body: { userId, role }, headers })`（admin plugin 提供），把該使用者升成 admin。Phase 1 簡化做法：**所有邀請來的人都先是 staff，需要升 admin 由現有 admin 在「帳號管理」頁面手動設**。下面 Task 13 的 UI 必須有一個「設為管理員 / 設為同事」的按鈕（呼叫 `admin.setRole`）。inviteUser server action 收到的 `role` 參數先記在 audit log 但不直接寫入 user.role；Phase 1 的安全選擇 = 永遠由活生生的 admin 親手點擊升權，不靠 token 攜帶 role。
 
 - [ ] **Step 4：commit**
 

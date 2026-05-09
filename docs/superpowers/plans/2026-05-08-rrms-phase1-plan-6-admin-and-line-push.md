@@ -9,7 +9,7 @@
 **Architecture:** Admin pages 全用 Server Component + Server Action；案件列表用 SQL pagination；狀態變更走交易：寫 cases.status + 寫 case_status_history + 觸發 LINE push（push 失敗用 webhook retry queue 補償，Phase 1 簡化為 console.error + 寫紀錄表）；Webhook handler 用 LINE 簽章 HMAC-SHA256 驗證每個請求。
 
 **Tech Stack:**
-- `@line/bot-sdk` 官方 SDK
+- `@line/bot-sdk` ^11.0.0（已驗證 2026-05-08：v11 拿掉 axios 改用原生 fetch；需 Node 20+，Plan 1 ci.yml 已用 22）
 - shadcn/ui Table / Dialog / Select
 - React 19 useOptimistic（狀態變更即時 UI）
 
@@ -132,7 +132,7 @@ vercel env pull .env.local
 - [ ] **Step 1：安裝 @line/bot-sdk**
 
 ```powershell
-pnpm add @line/bot-sdk
+pnpm add "@line/bot-sdk@^11.0.0"
 ```
 
 - [ ] **Step 2：建立 `src/lib/line/client.ts`**

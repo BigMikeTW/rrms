@@ -178,7 +178,7 @@ git status
 | gitleaks | https://github.com/gitleaks/gitleaks |
 | semgrep | https://semgrep.dev/docs/getting-started/quickstart |
 | GitHub Actions for Node.js | https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-nodejs |
-| Claude Code Hooks | https://docs.claude.com/en/docs/claude-code/hooks |
+| Claude Code Hooks | https://code.claude.com/docs/en/hooks |
 
 - [ ] **Step 2：把驗證結果整理成短文，列出**
   - 每項 latest stable 版本
@@ -859,7 +859,7 @@ jobs:
     name: gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
@@ -872,11 +872,11 @@ jobs:
     name: ESLint + tsc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
@@ -886,11 +886,11 @@ jobs:
     name: Client bundle scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
@@ -902,7 +902,7 @@ jobs:
     container:
       image: returntocorp/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: semgrep --config p/owasp-top-ten --error
 ```
 
@@ -1399,11 +1399,13 @@ export const config: VercelConfig = {
 };
 ```
 
-- [ ] **Step 3：安裝 @vercel/config 型別**
+- [ ] **Step 3：安裝 @vercel/config 型別（鎖 exact 版本）**
 
 ```powershell
-pnpm add -D @vercel/config
+pnpm add -D @vercel/config@0.3.0
 ```
+
+> ⚠️ **鎖 `0.3.0` exact、不要用 caret `^0.3.0`**。`@vercel/config` 仍是 v0.x 套件，作者隨時可能改 API。
 
 - [ ] **Step 4：commit + push 觸發 preview deploy**
 

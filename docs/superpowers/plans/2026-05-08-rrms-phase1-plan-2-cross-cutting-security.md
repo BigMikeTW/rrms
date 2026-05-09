@@ -217,11 +217,11 @@ git push
     name: npm audit (high+)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Audit dependencies (fail on high+ severity)
@@ -299,7 +299,7 @@ jobs:
     steps:
       - name: Wait for Vercel preview
         # Vercel 部署完 preview URL 才能掃。等 Vercel bot 留 deployment status
-        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.3
         id: vercel
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -309,7 +309,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.13.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ steps.vercel.outputs.url }}
           rules_file_name: '.zap/rules.tsv'
@@ -381,7 +381,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.13.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'https://app.<your-domain>'
           rules_file_name: '.zap/rules.tsv'

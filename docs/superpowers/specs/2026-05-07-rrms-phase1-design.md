@@ -457,7 +457,7 @@
 
 **掃描內容**（同 L2，但即時跑）：見下方共用清單。
 
-**來源**：Claude Code Hooks 官方文件 https://docs.claude.com/en/docs/claude-code/hooks（2026-05-08 fetch 驗證 exit code 表格、event 列表、JSON vs exit code 互斥規則）
+**來源**：Claude Code Hooks 官方文件 https://code.claude.com/docs/en/hooks（2026-05-08 fetch 驗證 exit code 表格、event 列表、JSON vs exit code 互斥規則）
 
 ---
 

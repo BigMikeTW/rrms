@@ -9,7 +9,7 @@
 **Architecture:** UI 用 React 19 Server Components + Server Action 處理提交；Zod 做欄位驗證；案件編號用 Postgres advisory lock + 當日序號 SELECT FOR UPDATE 的方式產生，保證並發下不重複；rate limit 第一階段用 `query_attempts` 同樣的 PG 計數器思路自製簡易版（Phase 2 換 Upstash Redis）；隱私告知內容存 `consent_versions` 表，提交時 freeze 版本號到 `cases.consent_text_version`。
 
 **Tech Stack:**
-- Zod 3.x
+- Zod 4.x（已驗證 2026-05-08：Zod 4 stable，最新 4.4.3）
 - React 19 Server Action
 - Drizzle Postgres advisory lock (`pg_advisory_xact_lock`)
 - shadcn/ui Form / Input / Textarea / Checkbox
@@ -90,13 +90,15 @@ __tests__/
 
 ---
 
-## Task 1: 安裝 Zod
+## Task 1: 安裝 Zod 4
 
 ```powershell
-pnpm add zod
+pnpm add zod@^4.4.3
 git add package.json pnpm-lock.yaml
-git commit -m "chore: install zod for form validation"
+git commit -m "chore: install zod 4.x for form validation"
 ```
+
+> 注意：Zod 4 跟 Zod 3 的 API 部分有差，subagent 寫 schema 時請以 Zod 4 為準（例如 error map 形狀）。
 
 ---
 
