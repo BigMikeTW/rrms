@@ -73,7 +73,7 @@
 
 ### 4.1 公開報修表單
 
-**路徑**：`/report`（建議掛在主域名 `app.<domain>` 下）
+**路徑**：`/report`（建議掛在主域名 `rrms.pro080.com` 下）
 
 **欄位**：
 
@@ -609,7 +609,7 @@
 
 | 環境 | 觸發 | 域名 | DB | LINE Channel |
 |---|---|---|---|---|
-| Production | `main` 分支 push | `app.<domain>` | Neon main branch | 正式 LINE OA + 正式 LINE Login |
+| Production | `main` 分支 push | `rrms.pro080.com` | Neon main branch | 正式 LINE OA + 正式 LINE Login |
 | Preview/Dev | feature 分支 push、PR | `<branch>-<project>.vercel.app` | Neon dev branch | 測試 LINE OA + 測試 LINE Login |
 
 > Neon 的 branching 功能讓兩環境用同一專案的不同 branch，免費額度足夠。
@@ -649,7 +649,7 @@ export const config: VercelConfig = {
 | Google Cloud Console | OAuth 2.0 client（管理員 Google 登入）× 2（兩環境各一） | 2 |
 | Dropbox App Console | App + App Folder + refresh token × 2 | 2 |
 | Vercel Marketplace | 安裝 Neon integration | 1 |
-| 域名 DNS | 將 `app.<domain>` CNAME 到 Vercel | 1 |
+| 域名 DNS | 將 `rrms.pro080.com` CNAME 到 Vercel | 1 |
 | GitHub | Repo 連到 Vercel 觸發部署 | 1 |
 
 ---

@@ -383,14 +383,14 @@ jobs:
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.15.0
         with:
-          target: 'https://app.<your-domain>'
+          target: 'https://rrms.pro080.com'
           rules_file_name: '.zap/rules.tsv'
           fail_action: true
           allow_issue_writing: true
           issue_title: '[Security] Daily ZAP scan failed (production)'
 ```
 
-> 把 `<your-domain>` 換成你的真實 production 域名（Plan 8 設定 DNS 後才有真值；本任務先填 Vercel 預設 `https://rrms.vercel.app`，未來 Plan 8 再改）。
+> 把 `rrms.pro080.com` 換成你的真實 production 域名（Plan 8 設定 DNS 後才有真值；本任務先填 Vercel 預設 `https://rrms.vercel.app`，未來 Plan 8 再改）。
 
 - [ ] **Step 2：手動觸發測試**
 
@@ -726,7 +726,7 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 **Spec coverage**：對應 spec 6.7.4 + 6.8 全部章節都已覆蓋。
 
 **Placeholder scan**：
-- ZAP daily 中的 `<your-domain>` 是必要 placeholder（DNS 在 Plan 8 才設定）— 已在 Task 5 Step 1 加註備案使用 vercel.app
+- ZAP daily 中的 `rrms.pro080.com` 是必要 placeholder（DNS 在 Plan 8 才設定）— 已在 Task 5 Step 1 加註備案使用 vercel.app
 - Task 7 playbook 中「LINE 群組 / Email / 法律顧問」是業務窗口資訊，須使用者填，這類「待真實資料」的 placeholder 不算 plan 失敗
 
 **Type / 命名一致性**：

@@ -53,7 +53,7 @@ vercel.ts                              # 加入 crons 設定
 ## Pre-Tasks
 
 - [ ] Plan 7 全部驗收通過
-- [ ] 你已準備好正式上線的網域名稱（例：`app.<yourcompany>.tw`）
+- [ ] 你已備妥網域 `pro080.com`（已決定）；DNS 設定權限在你手上
 - [ ] 你已通知公司同事「即將正式啟用，準備接單」
 
 ---
@@ -382,7 +382,7 @@ git commit -m "test(security): red-team anonymization respects 2-year retention"
 - [ ] **Step 1：開啟 production LINE OA**
 
 到 https://developers.line.biz/console/，找到 Plan 6 已建的 `RRMS OA (prod)`：
-- Webhook URL：填 `https://<production-domain>/api/line/webhook`
+- Webhook URL：填 `https://rrms.pro080.com/api/line/webhook`
 - Use webhook：開
 - 把對應 secret 填到 Vercel **production** scope：
 
@@ -410,7 +410,7 @@ pnpm tsx scripts/register-rich-menu.ts
 - [ ] **Step 1：建 Production Google OAuth client**
 
 到 Google Cloud Console，**用同一個 RRMS 專案再建一個 OAuth client**：
-1. Authorized redirect URI 填 `https://<production-domain>/api/auth/callback/google`
+1. Authorized redirect URI 填 `https://rrms.pro080.com/api/auth/callback/google`
 2. 拿 client ID + secret，加進 Vercel production env：
 
 ```powershell
@@ -430,7 +430,7 @@ vercel env add DROPBOX_REFRESH_TOKEN production
 
 - [ ] **Step 3：建 Production LIFF**
 
-到 LINE Developer Console → RRMS OA (prod) → LIFF → Add，Endpoint URL 填 `https://<production-domain>/liff/report`，拿 LIFF ID：
+到 LINE Developer Console → RRMS OA (prod) → LIFF → Add，Endpoint URL 填 `https://rrms.pro080.com/liff/report`，拿 LIFF ID：
 
 ```powershell
 vercel env add NEXT_PUBLIC_LIFF_ID production
@@ -444,49 +444,55 @@ vercel env add NEXT_PUBLIC_LIFF_ID production
 
 > 此步驟你網域商不同步驟略有差異。以 GoDaddy / Cloudflare / 中華電信為例。
 
-- [ ] **Step 1：在 Vercel 加 production domain**
+- [ ] **Step 1：在 Vercel 加兩個 domain（production + dev）**
 
 1. Vercel Dashboard → RRMS 專案 → Settings → Domains
-2. Add：填 `app.<yourdomain>.tw`
-3. Vercel 顯示要設定的 DNS 紀錄（CNAME 或 A record）
+2. Add：填 `rrms.pro080.com`，分配到 production（main 分支）
+3. Add：填 `rrms-dev.pro080.com`，分配到 preview（dev / feature 分支用同一個固定網址）
+4. Vercel 顯示兩條 DNS CNAME 紀錄要在你網域商後台加
 
-- [ ] **Step 2：到網域商後台改 DNS**
+- [ ] **Step 2：到網域商後台改 DNS（加兩條 CNAME）**
+
+需要加的紀錄：
+
+| 子網域 | Type | Value（Vercel 提供） |
+|---|---|---|
+| `rrms` | CNAME | `cname.vercel-dns.com.`（或 Vercel UI 顯示的值） |
+| `rrms-dev` | CNAME | 同上 |
 
 #### 2A. 若用 Cloudflare：
 
-1. Cloudflare Dashboard → 你的 domain
+1. Cloudflare Dashboard → `pro080.com`
 2. DNS → Add record
-3. Type：CNAME
-4. Name：`app`
-5. Target：Vercel 給你的值（通常是 `cname.vercel-dns.com.`）
-6. Proxy status：**DNS only**（**關掉 Cloudflare proxy**，否則 Vercel 簽不到 SSL）
-7. 按 Save
+3. **第一條**：Type CNAME / Name `rrms` / Target Vercel 給的值 / Proxy status **DNS only**（關 proxy）
+4. **第二條**：Type CNAME / Name `rrms-dev` / Target Vercel 給的值 / Proxy status **DNS only**
+5. 各自按 Save
 
 #### 2B. 若用 GoDaddy：
 
-1. My Domains → 你的 domain → DNS Management
-2. Add → Type: CNAME
-3. Name: `app`
-4. Value: Vercel 給你的值
-5. TTL: 1 Hour
-6. Save
+1. My Domains → `pro080.com` → DNS Management
+2. **第一條**：Add Type CNAME / Name `rrms` / Value Vercel 給的值 / TTL 1 Hour
+3. **第二條**：Add Type CNAME / Name `rrms-dev` / Value 同上 / TTL 1 Hour
+4. Save
 
 #### 2C. 若用中華電信 / TWNIC：
 
 1. 登入 https://rsdomain.cdsi.com.tw/
-2. 找該 domain → 修改 DNS 設定
-3. 加 CNAME record：`app.<yourdomain>.tw` → Vercel 給的值
+2. 找 `pro080.com` → 修改 DNS 設定
+3. 加 CNAME `rrms` → Vercel 值
+4. 加 CNAME `rrms-dev` → Vercel 值
 
 - [ ] **Step 3：等 DNS 生效（5 分鐘到 24 小時）**
 
 ```powershell
-nslookup app.<yourdomain>.tw
+nslookup rrms.pro080.com
+nslookup rrms-dev.pro080.com
 ```
-回傳指向 Vercel 才算生效。
+兩條都要指向 Vercel 才算生效。
 
 - [ ] **Step 4：在 Vercel 確認 domain 狀態**
 
-Settings → Domains 看到 `app.<yourdomain>.tw` 旁顯示 ✅ Valid Configuration。
+Settings → Domains 看到 `rrms.pro080.com` 與 `rrms-dev.pro080.com` 兩條都顯示 ✅ Valid Configuration。
 
 - [ ] **Step 5：跟我回報「DNS 生效」**
 
@@ -513,7 +519,7 @@ Settings → Domains 看到 `app.<yourdomain>.tw` 旁顯示 ✅ Valid Configurat
 ## Production 環境
 
 - [ ] DNS 指向 Vercel 並 SSL 正常
-- [ ] `https://app.<domain>` 可開啟 RRMS 首頁
+- [ ] `https://rrms.pro080.com` 可開啟 RRMS 首頁
 - [ ] LINE OA prod webhook URL 填正式 domain，已 Verify 200
 - [ ] Google OAuth prod redirect URI 含正式 domain
 - [ ] Dropbox prod app 已建，refresh token 在 production env
@@ -620,7 +626,7 @@ CRON_SECRET                           ← Task 1
 ```powershell
 vercel env rm AUTH_URL production
 vercel env add AUTH_URL production
-# 填 https://app.<yourdomain>.tw
+# 填 https://rrms.pro080.com
 ```
 
 - [ ] **Step 3：跟我回報「全部 production env 確認」**
@@ -629,9 +635,9 @@ vercel env add AUTH_URL production
 
 ## Task 10: 切換 production 域名
 
-- [ ] **Step 1：把 `app.<yourdomain>` 設為 production assignment**
+- [ ] **Step 1：把 `rrms.pro080.com` 設為 production assignment**
 
-Vercel Dashboard → Settings → Domains，把 `app.<yourdomain>.tw` 設為 production branch（main）的對應域名。
+Vercel Dashboard → Settings → Domains，把 `rrms.pro080.com` 設為 production branch（main）的對應域名。
 
 - [ ] **Step 2：觸發一次 production 部署**
 
@@ -640,7 +646,7 @@ git commit --allow-empty -m "chore: trigger production deploy on real domain"
 git push origin main
 ```
 
-- [ ] **Step 3：等 production 部署完，連 https://app.<yourdomain>.tw**
+- [ ] **Step 3：等 production 部署完，連 https://rrms.pro080.com**
 
 確認：
 - 首頁正常
@@ -669,7 +675,7 @@ git push origin v1.0.0-phase1
 - [ ] 手動觸發 `/api/cron/anonymize-expired` 含正確 secret 回 200
 - [ ] 不含 secret 呼叫回 401
 - [ ] 紅隊測試 `__tests__/cron/anonymize.spec.ts` PASS（已過期被匿名化、未過期保留）
-- [ ] DNS 生效，`https://app.<yourdomain>.tw` 可訪
+- [ ] DNS 生效，`https://rrms.pro080.com` 可訪
 - [ ] Production LINE / Google / Dropbox 全部 secrets 已設
 - [ ] 上線檢查清單全部打勾
 - [ ] 公開示範：在 production domain 完整跑一次「客戶報修 → 員工接收 → 改狀態 → 客戶查詢」

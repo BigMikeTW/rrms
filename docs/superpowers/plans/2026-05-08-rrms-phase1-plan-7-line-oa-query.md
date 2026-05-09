@@ -541,7 +541,7 @@ git commit -m "feat(line): rich menu registration script"
 2. 上方分頁 `LIFF` → Add
 3. LIFF app name: `RRMS Report`
 4. Size: `Full`
-5. Endpoint URL: `https://<你的-vercel-domain>/liff/report`
+5. Endpoint URL: `https://rrms.pro080.com/liff/report`
 6. Scope: 勾 `profile`、`openid`
 7. 按 Add → 拿到 LIFF ID
 

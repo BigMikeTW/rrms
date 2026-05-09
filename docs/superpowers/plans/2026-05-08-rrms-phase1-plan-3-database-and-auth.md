@@ -565,7 +565,7 @@ BETTER_AUTH_URL=http://localhost:3000
 ```powershell
 vercel env add BETTER_AUTH_SECRET production
 vercel env add BETTER_AUTH_SECRET preview
-vercel env add BETTER_AUTH_URL production    # 填 https://<你的-vercel-domain>
+vercel env add BETTER_AUTH_URL production    # 填 https://rrms.pro080.com
 vercel env add BETTER_AUTH_URL preview       # 填 Vercel 給的 preview domain 模板
 ```
 
@@ -619,6 +619,10 @@ export const auth = betterAuth({
           sameSite: "lax",
           secure: isProd, // spec 6.7.3: Secure flag in production only
           path: "/",
+          // 預留將來跨工具 SSO：production 時 cookie domain 設為 .pro080.com，
+          // 讓 rrms.pro080.com / crm.pro080.com / ...（未來工具）可以共享同一個 session。
+          // dev 環境留空（dev 走本機 localhost，不需跨 subdomain）。
+          domain: isProd ? ".pro080.com" : undefined,
         },
       },
     },
@@ -843,7 +847,7 @@ git commit -m "feat(auth): login page with email+password / Google / LINE button
 7. Name: `rrms-dev`
 8. Authorized redirect URIs：填以下兩個（Better Auth 的 callback path 跟 Auth.js 一樣是 `/api/auth/callback/google`，來源：https://www.better-auth.com/docs/authentication/google ）
    - `http://localhost:3000/api/auth/callback/google`
-   - `https://<你的-vercel-domain>/api/auth/callback/google`
+   - `https://rrms.pro080.com/api/auth/callback/google`
 9. 按 Create → 跳出 client ID + client secret，複製下來
 
 - [ ] **Step 2：把 secret 推到 Vercel + 本機**
@@ -900,7 +904,7 @@ git commit -m "feat(auth): add Google social provider"
 8. 按 Create
 9. 進到 Channel 設定頁：
    - 上方分頁 `LINE Login`
-   - Callback URL：填 `http://localhost:3000/api/auth/oauth2/callback/line` 與 `https://<你的-vercel-domain>/api/auth/oauth2/callback/line`（注意：Better Auth `genericOAuth` 的 callback 路徑是 `/api/auth/oauth2/callback/<providerId>`，**不**是 `/api/auth/callback/<providerId>`，來源：generic-oauth plugin docs）
+   - Callback URL：填 `http://localhost:3000/api/auth/oauth2/callback/line` 與 `https://rrms.pro080.com/api/auth/oauth2/callback/line`（注意：Better Auth `genericOAuth` 的 callback 路徑是 `/api/auth/oauth2/callback/<providerId>`，**不**是 `/api/auth/callback/<providerId>`，來源：generic-oauth plugin docs）
 10. 上方分頁 `Basic settings`：
     - 記下 `Channel ID` 與 `Channel secret`
 
