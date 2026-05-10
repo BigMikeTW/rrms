@@ -31,8 +31,10 @@
 
 ```
 src/
-├── lib/
-│   └── dropbox.ts                 # server-only Dropbox client wrapper
+├── adapters/
+│   └── storage/
+│       ├── index.ts               # StorageAdapter port (Phase 3)
+│       └── DropboxAdapter.ts      # concrete adapter (Plan 5 Task 2; per ADR-0110)
 ├── app/
 │   ├── api/
 │   │   └── media/
@@ -127,12 +129,17 @@ vercel env pull .env.local
 
 ---
 
-## Task 2: server-only Dropbox client
+## Task 2: Dropbox storage adapter (StorageAdapter implementation)
 
-- [ ] **Step 1：建立 `src/lib/dropbox.ts`**
+> **Per ADR-0110**: 此 client 為 `StorageAdapter` port（`src/adapters/storage/index.ts`，Phase 3 已落地）的 **concrete adapter**，路徑為 `src/adapters/storage/DropboxAdapter.ts`。**業務層（`src/app/`、`src/lib/`）禁止直接 import `dropbox` 套件**；ESLint rule `rrms/no-platform-sdk-outside-adapter` 會在 CI 擋下違規。
+>
+> **此 adapter 須以 `class DropboxAdapter implements StorageAdapter` 形式包裝下方 functions**：`getTemporaryUploadLink` 對應 port 中的 signed-upload-URL 操作（**注意**：Phase 3 port 目前只有 `getSignedUrl`，Phase 5 實作時需擴增 `getSignedUploadUrl(key, options): Promise<{ url: string; expiresAt: Date }>` 至 port 介面，並在 port `index.ts` 4W 註解補述）；`deleteDropboxFile` 對應 `delete(key)`。Token 快取為實作細節，留在 adapter 內，不洩漏到 port。
+
+- [ ] **Step 1：建立 `src/adapters/storage/DropboxAdapter.ts`**
 
 ```ts
-// src/lib/dropbox.ts
+// src/adapters/storage/DropboxAdapter.ts
+// 4W header 略（per CODING_STANDARDS — What/Why/Where/When；Why 引 ADR-0006 + ADR-0110）
 import "server-only";
 
 const TOKEN_ENDPOINT = "https://api.dropboxapi.com/oauth2/token";
@@ -214,8 +221,8 @@ export async function deleteDropboxFile(path: string): Promise<void> {
 - [ ] **Step 2：commit**
 
 ```powershell
-git add src/lib/dropbox.ts
-git commit -m "feat(media): server-only Dropbox client wrapper"
+git add src/adapters/storage
+git commit -m "feat(media): Dropbox concrete adapter for StorageAdapter port (per ADR-0110)"
 ```
 
 ---
@@ -226,9 +233,14 @@ git commit -m "feat(media): server-only Dropbox client wrapper"
 
 ```ts
 // src/app/api/media/get-upload-url/route.ts
+// Imports the concrete adapter directly in Phase 1 (no DI container yet).
+// Phase 4 will introduce a factory; until then, the adapter file path itself
+// is the swap point — replace DropboxAdapter with another StorageAdapter impl
+// without touching this route. ESLint allows this import because the path
+// resolves through `@/adapters/...`, not a raw `dropbox` SDK import.
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getTemporaryUploadLink } from "@/lib/dropbox";
+import { dropboxStorage } from "@/adapters/storage/DropboxAdapter";
 import { rateLimitByIp } from "@/lib/ratelimit";
 import { headers } from "next/headers";
 import { randomUUID } from "node:crypto";
@@ -274,7 +286,7 @@ export async function POST(req: Request) {
   const ext = filename.split(".").pop()?.replace(/[^a-z0-9]/gi, "") ?? "bin";
   const targetPath = `/${env}/${caseNo}/${uuid}.${ext}`;
 
-  const uploadUrl = await getTemporaryUploadLink(targetPath);
+  const uploadUrl = await dropboxStorage.getSignedUploadUrl(targetPath);
   return NextResponse.json({ uploadUrl, dropboxPath: targetPath, sizeBytes, mimeType });
 }
 ```

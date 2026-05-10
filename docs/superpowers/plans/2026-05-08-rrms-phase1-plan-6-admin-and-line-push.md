@@ -31,11 +31,13 @@
 
 ```
 src/
+├── adapters/
+│   └── line/
+│       ├── index.ts                  # LineAdapter port (Phase 3)
+│       └── LineBotSdkAdapter.ts      # concrete adapter wrapping @line/bot-sdk + HMAC verify (Plan 6 Task 2; per ADR-0110)
 ├── lib/
 │   └── line/
-│       ├── client.ts             # @line/bot-sdk wrapper (server-only)
-│       ├── push.ts               # 推播訊息組合
-│       └── verify-signature.ts   # webhook 簽章驗證
+│       └── push.ts               # 推播訊息「組合 / 內容生成」（內文 templating；不直接 import @line/bot-sdk）
 ├── app/
 │   ├── admin/
 │   │   ├── page.tsx              # Dashboard（覆蓋 Plan 3 placeholder）
@@ -127,7 +129,9 @@ vercel env pull .env.local
 
 ---
 
-## Task 2: server-only LINE client + 簽章驗證
+## Task 2: LINE adapter (LineAdapter implementation)
+
+> **Per ADR-0110**: 此 client 為 `LineAdapter` port（`src/adapters/line/index.ts`，Phase 3 已落地）的 **concrete adapter**，路徑為 `src/adapters/line/LineBotSdkAdapter.ts`。**業務層（`src/app/`、`src/lib/`）禁止直接 import `@line/bot-sdk` 或 `@line/liff`**；ESLint rule `rrms/no-platform-sdk-outside-adapter` 會在 CI 擋下違規。MessagingApiClient 實例化、HMAC 簽章驗證、webhook event parsing 全部是這個 class 的內部實作；business code 只看得到 port 介面定義的 `verifyWebhookSignature` / `parseWebhookEvent` / `replyToMessage` / `pushMessage` 四個方法。
 
 - [ ] **Step 1：安裝 @line/bot-sdk**
 
@@ -135,47 +139,65 @@ vercel env pull .env.local
 pnpm add "@line/bot-sdk@^11.0.0"
 ```
 
-- [ ] **Step 2：建立 `src/lib/line/client.ts`**
+- [ ] **Step 2：建立 `src/adapters/line/LineBotSdkAdapter.ts`**
 
 ```ts
-import "server-only";
-import { messagingApi } from "@line/bot-sdk";
-
-export const lineClient = new messagingApi.MessagingApiClient({
-  channelAccessToken: process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN!,
-});
-```
-
-- [ ] **Step 3：建立 `src/lib/line/verify-signature.ts`**
-
-```ts
+// src/adapters/line/LineBotSdkAdapter.ts
+// 4W header 略（per CODING_STANDARDS — What/Why/Where/When；Why 引 ADR-0110）
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { messagingApi } from "@line/bot-sdk";
+import type {
+  LineAdapter,
+  LineOutboundMessage,
+  LineSignatureCheckResult,
+  LineWebhookEvent,
+} from "@/adapters/line";
 
-/**
- * 驗證 LINE Webhook 的 X-Line-Signature header
- * 對應 https://developers.line.biz/en/reference/messaging-api/#signature-validation
- */
-export function verifyLineSignature(
-  rawBody: string,
-  signature: string | null,
-): boolean {
-  if (!signature) return false;
-  const hmac = createHmac("sha256", process.env.LINE_MESSAGING_CHANNEL_SECRET!);
-  hmac.update(rawBody, "utf8");
-  const expected = hmac.digest("base64");
-  const a = Buffer.from(expected);
-  const b = Buffer.from(signature);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+class LineBotSdkAdapter implements LineAdapter {
+  private readonly client = new messagingApi.MessagingApiClient({
+    channelAccessToken: process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN!,
+  });
+
+  /**
+   * 驗證 LINE Webhook 的 X-Line-Signature header
+   * 對應 https://developers.line.biz/en/reference/messaging-api/#signature-validation
+   */
+  verifyWebhookSignature(rawBody: string, signature: string | null): LineSignatureCheckResult {
+    if (!signature) return { ok: false, reason: "no signature header" };
+    const hmac = createHmac("sha256", process.env.LINE_MESSAGING_CHANNEL_SECRET!);
+    hmac.update(rawBody, "utf8");
+    const expected = hmac.digest("base64");
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    if (a.length !== b.length) return { ok: false, reason: "length mismatch" };
+    return { ok: timingSafeEqual(a, b), reason: undefined };
+  }
+
+  parseWebhookEvent(rawBody: string): LineWebhookEvent[] {
+    // SDK-shape → port-shape mapping; drop event types not enumerated in port
+    // (per ADR-0112 discipline 2 — neutral contracts)
+    const parsed = JSON.parse(rawBody) as { events?: unknown[] };
+    return (parsed.events ?? []).flatMap(/* normalize per port enum */ () => []);
+  }
+
+  async replyToMessage(replyToken: string, messages: LineOutboundMessage[]): Promise<void> {
+    await this.client.replyMessage({ replyToken, messages });
+  }
+
+  async pushMessage(userId: string, messages: LineOutboundMessage[]): Promise<void> {
+    await this.client.pushMessage({ to: userId, messages });
+  }
 }
+
+export const lineAdapter: LineAdapter = new LineBotSdkAdapter();
 ```
 
-- [ ] **Step 4：commit**
+- [ ] **Step 3：commit**
 
 ```powershell
-git add src/lib/line package.json pnpm-lock.yaml
-git commit -m "feat(line): server-only client + HMAC signature verification"
+git add src/adapters/line package.json pnpm-lock.yaml
+git commit -m "feat(line): LINE concrete adapter for LineAdapter port (per ADR-0110)"
 ```
 
 ---
@@ -554,7 +576,7 @@ import "server-only";
 import { db } from "@/db/client";
 import { cases } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { lineClient } from "./client";
+import { lineAdapter } from "@/adapters/line/LineBotSdkAdapter";
 
 export async function pushOnNewCase(caseNo: string) {
   const groupId = process.env.LINE_INTERNAL_GROUP_ID;
@@ -564,20 +586,17 @@ export async function pushOnNewCase(caseNo: string) {
   });
   if (!c) return;
 
-  await lineClient.pushMessage({
-    to: groupId,
-    messages: [
-      {
-        type: "text",
-        text:
-          `🆕 新報修案件\n` +
-          `編號：${c.caseNo}\n` +
-          `報修人：${c.reporterName} (${c.reporterCompany})\n` +
-          `地點：${c.location}\n` +
-          `內容：${c.description.slice(0, 80)}${c.description.length > 80 ? "…" : ""}`,
-      },
-    ],
-  });
+  await lineAdapter.pushMessage(groupId, [
+    {
+      type: "text",
+      text:
+        `🆕 新報修案件\n` +
+        `編號：${c.caseNo}\n` +
+        `報修人：${c.reporterName} (${c.reporterCompany})\n` +
+        `地點：${c.location}\n` +
+        `內容：${c.description.slice(0, 80)}${c.description.length > 80 ? "…" : ""}`,
+    },
+  ]);
 }
 
 export async function pushOnStatusChange(caseNo: string, toStatus: string) {
@@ -594,15 +613,12 @@ export async function pushOnStatusChange(caseNo: string, toStatus: string) {
     cancelled: "已取消",
   };
 
-  await lineClient.pushMessage({
-    to: c.lineUserId,
-    messages: [
-      {
-        type: "text",
-        text: `📋 您的報修案件 ${c.caseNo} 狀態更新為：${labels[toStatus] ?? toStatus}`,
-      },
-    ],
-  });
+  await lineAdapter.pushMessage(c.lineUserId, [
+    {
+      type: "text",
+      text: `📋 您的報修案件 ${c.caseNo} 狀態更新為：${labels[toStatus] ?? toStatus}`,
+    },
+  ]);
 }
 ```
 
@@ -635,13 +651,14 @@ git commit -m "feat(line): push new case to staff group + status changes to cust
 
 ```ts
 import { NextResponse } from "next/server";
-import { verifyLineSignature } from "@/lib/line/verify-signature";
+import { lineAdapter } from "@/adapters/line/LineBotSdkAdapter";
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-line-signature");
 
-  if (!verifyLineSignature(rawBody, signature)) {
+  const sigCheck = lineAdapter.verifyWebhookSignature(rawBody, signature);
+  if (!sigCheck.ok) {
     return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }
 

@@ -294,9 +294,11 @@ git commit -m "feat(line): minimum-disclosure case status query (case_no + phone
 - [ ] **Step 1：擴充 `src/app/api/line/webhook/route.ts`**
 
 ```ts
+// Per ADR-0110, all LINE Messaging API access is through the LineAdapter
+// concrete adapter introduced in Plan 6 Task 2. Direct @line/bot-sdk imports
+// are blocked here by the rrms/no-platform-sdk-outside-adapter ESLint rule.
 import { NextResponse } from "next/server";
-import { verifyLineSignature } from "@/lib/line/verify-signature";
-import { lineClient } from "@/lib/line/client";
+import { lineAdapter } from "@/adapters/line/LineBotSdkAdapter";
 import { getConv, setConv, clearConv } from "@/lib/line/conversations";
 import { queryCaseStatus } from "@/lib/line/query";
 import {
@@ -309,15 +311,16 @@ const CASE_NO_RE = /^RPR-\d{11}$/;
 const PHONE_LAST4_RE = /^\d{4}$/;
 
 async function reply(replyToken: string, text: string) {
-  await lineClient.replyMessage({
-    replyToken,
-    messages: [{ type: "text", text }],
-  });
+  await lineAdapter.replyToMessage(replyToken, [{ type: "text", text }]);
 }
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
-  if (!verifyLineSignature(rawBody, req.headers.get("x-line-signature"))) {
+  const sigCheck = lineAdapter.verifyWebhookSignature(
+    rawBody,
+    req.headers.get("x-line-signature"),
+  );
+  if (!sigCheck.ok) {
     return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }
   const body = JSON.parse(rawBody) as {
@@ -421,15 +424,12 @@ export async function POST(req: Request) {
           await reply(event.replyToken, "資料不正確，請確認後再試。");
           // 若該案件被列舉嘗試 → 推內部群組告警
           if (await caseNoIsBeingProbed(caseNo)) {
-            await lineClient.pushMessage({
-              to: process.env.LINE_INTERNAL_GROUP_ID!,
-              messages: [
-                {
-                  type: "text",
-                  text: `⚠️ 案件 ${caseNo} 在 24h 內被驗證失敗 ≥5 次，可能有人嘗試列舉，請留意。`,
-                },
-              ],
-            });
+            await lineAdapter.pushMessage(process.env.LINE_INTERNAL_GROUP_ID!, [
+              {
+                type: "text",
+                text: `⚠️ 案件 ${caseNo} 在 24h 內被驗證失敗 ≥5 次，可能有人嘗試列舉，請留意。`,
+              },
+            ]);
           }
         }
         await clearConv(userId);
@@ -762,15 +762,12 @@ if (conv?.state === "awaiting_delete_contact" || conv?.state === "awaiting_right
     "已收到您的請求，我們會由同事在 7 個工作日內處理並聯絡您。",
   );
   // push 內部群組
-  await lineClient.pushMessage({
-    to: process.env.LINE_INTERNAL_GROUP_ID!,
-    messages: [
-      {
-        type: "text",
-        text: `🔔 客戶提交個資權利請求（${conv.state === "awaiting_delete_contact" ? "刪除" : "查詢/更正"}）：${text}`,
-      },
-    ],
-  });
+  await lineAdapter.pushMessage(process.env.LINE_INTERNAL_GROUP_ID!, [
+    {
+      type: "text",
+      text: `🔔 客戶提交個資權利請求（${conv.state === "awaiting_delete_contact" ? "刪除" : "查詢/更正"}）：${text}`,
+    },
+  ]);
   continue;
 }
 ```
