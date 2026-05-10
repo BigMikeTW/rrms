@@ -6,6 +6,21 @@ Where: Companion to 2026-05-08-bootstrap-versions.md (Plan 1 verification).
 When:  Created 2026-05-08; valid until next plan amendment cycle.
 -->
 
+> **2026-05-10 update — historical document, partially superseded**
+>
+> The Auth.js v5 / `next-auth` / `@auth/drizzle-adapter` / `bcryptjs` entries in this
+> report (rows 6-9, sections 6-9, HIGH 2) were rejected after publication. Plan 3
+> formally adopts Better Auth ^1.6 instead — see Plan 3 §"Why Better Auth (and not
+> Auth.js v5)" and the corresponding ADR (Phase 2 of the rigorous foundation plan
+> will assign an ADR number).
+>
+> The remaining entries (Dependabot, ZAP, Drizzle, Neon driver, Zod, Dropbox,
+> Vercel Cron, `@vercel/config`, `@line/bot-sdk`, `@line/liff`) are still current
+> as of the date below.
+>
+> This document is preserved as a paper trail of the decision moment, not as
+> current guidance. Do not implement against the Auth.js sections.
+
 # RRMS Phase 1 Cross-Plan Dependency Verification
 
 **Date:** 2026-05-08
