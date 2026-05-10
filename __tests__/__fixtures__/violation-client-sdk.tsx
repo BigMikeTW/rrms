@@ -15,8 +15,13 @@
  *        linted via `pnpm exec eslint --no-ignore __tests__/__fixtures__/`,
  *        which is the manual verification step in Plan 1 Task 4 Step 4.
  * When:  Use whenever you change `eslint-rules/no-server-sdk-in-client.mjs`
- *        — re-run the --no-ignore command and confirm exactly one error fires
- *        on this file mentioning `@line/bot-sdk`.
+ *        — re-run the --no-ignore command and confirm two errors fire on
+ *        this file, both mentioning `@line/bot-sdk`: one from
+ *        `rrms/no-server-sdk-in-client` (the original target) and one from
+ *        `rrms/no-platform-sdk-outside-adapter` (added in Phase 3 — the
+ *        Hexagonal port discipline per ADR-0110, which also catches LINE
+ *        SDK use outside `src/adapters/`). Both firing is correct
+ *        defense-in-depth and must NOT be silenced.
  *
  * !!! INTENTIONAL VIOLATION — DO NOT "FIX" THIS FILE !!!
  * The `"use client"` directive plus the server SDK import are the test

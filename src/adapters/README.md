@@ -24,6 +24,7 @@ This directory is the **ports** half of the Hexagonal / Ports-and-Adapters archi
 1. **Folder per port.** Each port lives in its own subfolder (`storage/`, `queue/`, `cron/`, `ai/`, `line/`). Phase 1 ships only the port interface (`index.ts`). Concrete adapters land in subsequent Plans and live in the same folder (e.g. `storage/DropboxAdapter.ts` from Plan 5).
 
 2. **Business code imports the port, not the SDK.**
+
    ```ts
    // OK — allowed in src/app, src/lib, src/components
    import type { StorageAdapter } from "@/adapters/storage";
@@ -34,19 +35,19 @@ This directory is the **ports** half of the Hexagonal / Ports-and-Adapters archi
 
 3. **Port interfaces use neutral contracts.** No Vercel-only return types, no LINE-only error codes leaking through. If a vendor field is needed, name it abstractly and translate inside the adapter (per [ADR-0112](../../docs/adr/0112-five-lock-in-mitigation-disciplines.md) discipline 2).
 
-4. **Vendor-neutral libraries are exempted from re-wrapping.** Better Auth (per [ADR-0132](../../docs/adr/0132-better-auth-replaces-authjs-v5.md)) is itself a framework-agnostic abstraction — wrapping it in another adapter would be a false abstraction (Mortoray, *The False Abstraction Antipattern*). Business code imports `@/lib/auth` directly. See [ADR-0110 §Exceptions](../../docs/adr/0110-hexagonal-ports-and-adapters.md) for the full list and rationale. The ESLint rule still blocks alternate auth libraries (`next-auth`, `@clerk/*`, `lucia`, …) from sneaking in without a new ADR.
+4. **Vendor-neutral libraries are exempted from re-wrapping.** Better Auth (per [ADR-0132](../../docs/adr/0132-better-auth-replaces-authjs-v5.md)) is itself a framework-agnostic abstraction — wrapping it in another adapter would be a false abstraction (Mortoray, _The False Abstraction Antipattern_). Business code imports `@/lib/auth` directly. See [ADR-0110 §Exceptions](../../docs/adr/0110-hexagonal-ports-and-adapters.md) for the full list and rationale. The ESLint rule still blocks alternate auth libraries (`next-auth`, `@clerk/*`, `lucia`, …) from sneaking in without a new ADR.
 
 5. **New platform SDK = new ADR + new port.** Before a PR adds a new vendor-specific SDK, an ADR must justify the choice and a port interface must be designed first. Direct SDK use without a port is rejected at PR review and blocked by CI lint.
 
 ## Phase 1 status
 
-| Port    | File                | Status     | Concrete adapter lands in                         |
-| ------- | ------------------- | ---------- | ------------------------------------------------- |
-| Storage | `storage/index.ts`  | Port-only  | Plan 5 (Dropbox media pipeline)                   |
-| Queue   | `queue/index.ts`    | Port-only  | Phase 2+ (no Phase 1 consumer)                    |
-| Cron    | `cron/index.ts`     | Port-only  | Plan 8 (Vercel Cron — anonymization)              |
-| AI      | `ai/index.ts`       | Port-only  | Phase 3+ (no Phase 1 consumer)                    |
-| LINE    | `line/index.ts`     | Port-only  | Plan 6 (admin push) + Phase 7 (LIFF customer UI)  |
+| Port    | File               | Status    | Concrete adapter lands in                        |
+| ------- | ------------------ | --------- | ------------------------------------------------ |
+| Storage | `storage/index.ts` | Port-only | Plan 5 (Dropbox media pipeline)                  |
+| Queue   | `queue/index.ts`   | Port-only | Phase 2+ (no Phase 1 consumer)                   |
+| Cron    | `cron/index.ts`    | Port-only | Plan 8 (Vercel Cron — anonymization)             |
+| AI      | `ai/index.ts`      | Port-only | Phase 3+ (no Phase 1 consumer)                   |
+| LINE    | `line/index.ts`    | Port-only | Plan 6 (admin push) + Phase 7 (LIFF customer UI) |
 
 ## Why no `auth/` and no generic `messaging/`
 
@@ -67,4 +68,4 @@ This directory implements **discipline 1** of the five lock-in mitigations in [A
 - [ADR-0132 — Better Auth pivot](../../docs/adr/0132-better-auth-replaces-authjs-v5.md)
 - Hexagonal Architecture (Cockburn 2005): https://alistair.cockburn.us/hexagonal-architecture/
 - AWS Prescriptive Guidance — Hexagonal Architecture: https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/hexagonal-architecture.html
-- Mortoray — *The False Abstraction Antipattern*: https://mortoray.com/the-false-abstraction-antipattern/
+- Mortoray — _The False Abstraction Antipattern_: https://mortoray.com/the-false-abstraction-antipattern/
