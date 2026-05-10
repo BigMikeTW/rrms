@@ -45,7 +45,9 @@ Phase 1：簡易報修系統，公開表單 + 後台管理 + LINE 通知。
 
 ## Tech Stack
 
-Next.js 16 (App Router) · TypeScript strict · Tailwind v4 · shadcn/ui · Drizzle · Neon · Better Auth · LINE Messaging API · Dropbox API · Vercel Functions
+Next.js 16 (App Router) · TypeScript strict · Tailwind v4 · shadcn/ui · Drizzle · Neon · Better Auth · LINE Messaging API · Dropbox API · Vercel Functions（Pro plan）
+
+> 部分套件在後續 Plans 才實際安裝（Drizzle / Neon driver / Better Auth → Plan 3；Dropbox SDK → Plan 5；LINE SDK → Plan 6）。本表為 **Phase 1 結束目標 stack**，非 Plan 1 完成時當下狀態。
 
 ## 開發前必讀
 
