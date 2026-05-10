@@ -123,7 +123,7 @@ import "server-only";
 import { db } from "@/db/client";
 import { cases, caseMedia } from "@/db/schema";
 import { and, lte, isNull, eq, sql } from "drizzle-orm";
-import { deleteDropboxFile } from "@/lib/dropbox";
+import { dropboxStorage } from "@/adapters/storage/DropboxAdapter";
 
 interface AnonymizeResult {
   scanned: number;
@@ -172,7 +172,7 @@ export async function anonymizeExpired(now: Date = new Date()): Promise<Anonymiz
       // 刪 Dropbox 檔
       for (const m of media) {
         try {
-          await deleteDropboxFile(m.dropboxPath);
+          await dropboxStorage.delete(m.dropboxPath);
           result.mediaDeleted += 1;
         } catch (e) {
           result.errors.push(`media delete ${m.dropboxPath}: ${e}`);
@@ -217,18 +217,47 @@ git commit -m "feat(anonymize): core logic — clear PII fields + delete Dropbox
 
 ## Task 3: Cron API endpoint
 
+> **Per ADR-0110**: cron secret 驗證走 `CronAdapter.verifyRequest`（concrete `VercelCronAdapter` 實作於 `src/adapters/cron/VercelCronAdapter.ts`，包裝 `Authorization: Bearer <CRON_SECRET>` 檢查）；LINE push 走 `LineAdapter.pushMessage`（per Plan 6 Task 2）。**禁止**直接讀 `process.env.CRON_SECRET` 比對 header — 包進 adapter 才能在未來換到 GitHub Actions cron / Temporal 時不動 endpoint。
+
+- [ ] **Step 0：建立 `src/adapters/cron/VercelCronAdapter.ts`**（如 Plan 1 Task 11.5 + Plan 8 Task 1 沒先做、本 Plan 第一次需要 cron adapter 時建立）
+
+```ts
+// src/adapters/cron/VercelCronAdapter.ts
+// 4W header 略（per CODING_STANDARDS — Why 引 ADR-0009 + ADR-0110）
+import "server-only";
+import type { CronAdapter, CronRequest, CronVerifyResult } from "@/adapters/cron";
+
+class VercelCronAdapter implements CronAdapter {
+  verifyRequest(req: CronRequest): CronVerifyResult {
+    const headers = req.headers as Headers;
+    const auth = typeof headers.get === "function"
+      ? headers.get("authorization")
+      : (req.headers as Record<string, string>)["authorization"];
+    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+      return { ok: false, reason: "missing or wrong CRON_SECRET" };
+    }
+    return { ok: true };
+  }
+}
+
+export const cronAdapter: CronAdapter = new VercelCronAdapter();
+```
+
 - [ ] **Step 1：建立 `src/app/api/cron/anonymize-expired/route.ts`**
 
 ```ts
 import { NextResponse } from "next/server";
 import { anonymizeExpired } from "@/lib/anonymize";
-import { lineClient } from "@/lib/line/client";
+import { cronAdapter } from "@/adapters/cron/VercelCronAdapter";
+import { lineAdapter } from "@/adapters/line/LineBotSdkAdapter";
 
 export async function GET(req: Request) {
-  // 驗證 CRON_SECRET（Vercel 預設用 Authorization: Bearer <CRON_SECRET>）
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // 驗證 cron 請求來源（Vercel 預設用 Authorization: Bearer <CRON_SECRET>）
+  // Per ADR-0009 + ADR-0110，CRON_SECRET 比對封裝在 VercelCronAdapter 內，
+  // 換 cron 平台時只動 adapter 一個檔。
+  const verify = cronAdapter.verifyRequest({ headers: req.headers });
+  if (!verify.ok) {
+    return NextResponse.json({ error: "unauthorized", reason: verify.reason }, { status: 401 });
   }
 
   const result = await anonymizeExpired();
@@ -237,22 +266,19 @@ export async function GET(req: Request) {
   const groupId = process.env.LINE_INTERNAL_GROUP_ID;
   if (groupId) {
     try {
-      await lineClient.pushMessage({
-        to: groupId,
-        messages: [
-          {
-            type: "text",
-            text:
-              `🤖 每日匿名化排程結果\n` +
-              `掃描：${result.scanned} 件\n` +
-              `匿名化：${result.anonymized} 件\n` +
-              `刪除媒體：${result.mediaDeleted} 個\n` +
-              (result.errors.length
-                ? `錯誤：${result.errors.length} 筆（見 Vercel logs）`
-                : `無錯誤`),
-          },
-        ],
-      });
+      await lineAdapter.pushMessage(groupId, [
+        {
+          type: "text",
+          text:
+            `🤖 每日匿名化排程結果\n` +
+            `掃描：${result.scanned} 件\n` +
+            `匿名化：${result.anonymized} 件\n` +
+            `刪除媒體：${result.mediaDeleted} 個\n` +
+            (result.errors.length
+              ? `錯誤：${result.errors.length} 筆（見 Vercel logs）`
+              : `無錯誤`),
+        },
+      ]);
     } catch (e) {
       console.error("notify push failed:", e);
     }

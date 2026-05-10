@@ -1168,6 +1168,34 @@ git commit -m "docs: add .env.example template per spec 6.7.2"
 
 ---
 
+## Task 11.5: Hexagonal architecture skeleton
+
+> **歷史註記**：本 Task 在 Plan 1 原始執行（2026-05-09）時尚未存在，於 pre-Plan-2 rigorous foundation **Phase 3**（2026-05-10，分支 `feat/rigorous-foundation-phase-3`）作為獨立 PR 補做。原 Plan 1 不需重跑；本 Task 留底紀錄改了哪些檔，方便日後讀者追蹤完整 Phase 1 終態。對應 audit finding F-M1（Hexagonal Phase 1 補骨架，採 A 最嚴謹方案）。
+
+**Why this lives in Phase 1 end-state, not in original Plan 1:** Phase 3 切出獨立 PR 的理由是 ADR-0110 紀律須先有可 lint 的 baseline，再讓 Plans 5/6/8 以 adapter 路徑撰寫；若併入 Plan 1 會讓「初始化 Next.js 專案」這一原子步驟責任過重。
+
+**Files (建立於 Phase 3，已 merged)：**
+- `src/adapters/README.md` — 5 條 lock-in 緩解紀律 + Phase 1 status 表 + 例外清單（auth / messaging）
+- `src/adapters/storage/index.ts` — `StorageAdapter` port 介面（concrete impl 於 Plan 5 Task 2）
+- `src/adapters/queue/index.ts` — `QueueAdapter` port 介面（無 Phase 1 consumer，純 lock-in 緩解佔位）
+- `src/adapters/cron/index.ts` — `CronAdapter` port 介面（concrete impl 於 Plan 8 Task 3）
+- `src/adapters/ai/index.ts` — `AIAdapter` port 介面（無 Phase 1 consumer，Phase 3+ 才用）
+- `src/adapters/line/index.ts` — `LineAdapter` port 介面（concrete impl 於 Plan 6 Task 2）
+- `eslint-rules/no-platform-sdk-outside-adapter.mjs` — 自訂 ESLint rule
+- `eslint.config.mjs` — 註冊新 rule + 加入 `rules` 開啟區
+- `__tests__/__fixtures__/violation-platform-sdk-outside-adapter.tsx` — 紅隊 fixture（4 條 value-import 觸發、2 條 type-only 不觸發）
+
+**ESLint 黑名單**（業務層禁、`src/adapters/` 例外）：完整清單與例外設計見 [ADR-0110](../../adr/0110-hexagonal-ports-and-adapters.md) Implementation 段；不在本 Task 重述以避免 doc drift。
+
+**為什麼不建 `auth/` 與不建廣義 `messaging/`**：見 [ADR-0110](../../adr/0110-hexagonal-ports-and-adapters.md) Exceptions 段（Better Auth 已是 vendor-neutral abstraction；LINE Messaging API 與 Slack/SMS/Email 模型差太大無法共用 port）。研究員分析：2026-05-10 session Q2 / Q3。
+
+**驗收**：
+- [x] `pnpm exec eslint --no-ignore __tests__/__fixtures__/violation-platform-sdk-outside-adapter.tsx` 產出 4 條 `rrms/no-platform-sdk-outside-adapter` 錯誤
+- [x] `pnpm lint` / `pnpm typecheck` / `pnpm audit:docs` 均無新錯誤
+- [x] ADR-0110 Implementation + Exceptions 段已寫入
+
+---
+
 ## Task 12: 紅隊測試自動化 Script（驗證五層全部能擋）
 
 **Files:**
