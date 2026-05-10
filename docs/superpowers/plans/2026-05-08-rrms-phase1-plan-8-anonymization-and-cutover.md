@@ -521,6 +521,8 @@ Settings → Domains 看到 `rrms.pro080.com` 與 `rrms-dev.pro080.com` 兩條�
 
 ## Production 環境
 
+- [ ] **Vercel plan = Pro 已確認**（非 Hobby Free；[Vercel Hobby 禁商用 TOS](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage)）
+- [ ] Vercel billing email 已設定且受 Mike 大監控（避免續訂失敗導致服務中斷）
 - [ ] DNS 指向 Vercel 並 SSL 正常
 - [ ] `https://rrms.pro080.com` 可開啟 RRMS 首頁
 - [ ] LINE OA prod webhook URL 填正式 domain，已 Verify 200
