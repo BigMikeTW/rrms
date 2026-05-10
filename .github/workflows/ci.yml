@@ -9,8 +9,10 @@
 #        machines and can be bypassed with `git commit --no-verify` or by
 #        disabling Claude. Layer 4 runs on GitHub's infrastructure, so it
 #        cannot be bypassed by any local action — every push and PR is
-#        re-checked from a clean checkout. Layer 3 is the protected-branch
-#        rule on `main` that requires these checks to pass.
+#        re-checked from a clean checkout. Layer 4's enforcement on PRs is
+#        made mandatory by the protected-branch rule on `main` (which lists
+#        these jobs as required status checks). Layer 3 (pre-push hook) itself
+#        is deferred to Phase 2 per spec §6.7.4.
 # Where: GitHub-hosted `ubuntu-latest` runners (semgrep additionally uses the
 #        `semgrep/semgrep` container). Triggered by GitHub on the events
 #        below; results surface in the repo Actions tab and on PR pages.

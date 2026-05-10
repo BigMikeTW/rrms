@@ -527,6 +527,7 @@
 | commit / 暫存中含 secret | gitleaks | 6.7.1 |
 | `NEXT_PUBLIC_*_SECRET / *_KEY / *_TOKEN` | 自訂 ESLint rule | 6.7.1 |
 | client bundle 含 secret pattern | 自訂 grep script | 6.7.1, 6.7.5 |
+| `BETTER_AUTH_SECRET / NEXTAUTH_SECRET / AUTH_SECRET` 等 env 名稱 + 32+ 字元值誤入 commit / bundle | gitleaks 自訂 rule + bundle scan regex | 6.7.1 |
 | 直接從前端呼叫第三方 API | 自訂 ESLint rule（禁 import `@line/bot-sdk` 於 `'use client'` 檔案等） | 6.7.5 |
 | Cookie 設定缺 `HttpOnly` | grep + 設定檔檢查 | 6.7.3 |
 | 通用安全 anti-pattern | semgrep OWASP rule pack | 6.7.x 全段 |
@@ -603,6 +604,7 @@
 | 排程 | Vercel Cron Jobs |
 | 設定檔 | `vercel.ts`（取代 `vercel.json`） |
 | 套件管理 | pnpm |
+| Vercel plan tier | **Pro**（per brainstorm A14、H1；Hobby Free 禁商用 per [Vercel Fair Use Guidelines §Commercial Usage](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage)） |
 
 ### 7.2 環境配置
 

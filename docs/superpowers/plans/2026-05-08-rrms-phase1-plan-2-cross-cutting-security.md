@@ -68,6 +68,32 @@ RRMS/
 
 ---
 
+## Plan 2 整體分支策略
+
+依 [`feedback_pr_flow.md`](../../../../Users/Mike%20Lin/.claude/projects/c--APP-Project-RRMS/memory/feedback_pr_flow.md) 工作規則 — 1 PR per Plan + Plan 2-7 走 auto-merge + 禁直接 push `main`。
+
+整個 Plan 2（Task 1-12 + 紅隊驗證）在**單一** feature branch 上做：
+
+```powershell
+git checkout main
+git pull --ff-only
+git checkout -b feat/plan-2-cross-cutting-security
+```
+
+> **Task 4/6/8/9 中另外開的「test PR」與本 implementation branch 平行**，是短命 red-team branch（如 `test/zap-pipeline`、`red-team/dependabot`、`red-team/zap-xss`）。驗證後 `gh pr close --delete-branch` 關掉，不 merge。它們和 implementation branch 無關。
+
+收尾 PR 流程：
+
+```powershell
+git push -u origin feat/plan-2-cross-cutting-security
+gh pr create --title "feat: Plan 2 — Cross-Cutting Security Platform" --body "..."
+gh pr merge <PR#> --auto --merge
+```
+
+> **Branch Protection 變更紀律**：本 plan 中所有 `gh api .../branches/main/protection -X PUT` 指令統一在 **Task 10 Step 1** 一次完成。理由：GitHub branch protection [PUT API](https://docs.github.com/en/rest/branches/branch-protection?apiVersion=2022-11-28#update-branch-protection) 是整個 protection object 取代，多次 PUT 容易因省略欄位（例如 `enforce_admins`、`required_pull_request_reviews.dismiss_stale_reviews`、`restrictions=null`）誤關現有保護。Task 3 / Task 5 / Task 7 等中間 task 不再單獨動 protection。
+
+---
+
 ## Task 0: Pre-code Research Gate
 
 > 本任務不寫程式，只查證、回報、等使用者確認。對應 [feedback_pre_code_research_gate.md](../../../../Users/Mike%20Lin/.claude/projects/c--APP-Project-RRMS/memory/feedback_pre_code_research_gate.md) 工作規則。
@@ -251,13 +277,7 @@ git push
 
 去 GitHub Actions 看 npm-audit job 通過。
 
-- [ ] **Step 4：把 npm-audit 加進 Branch Protection required checks**
-
-```powershell
-gh api repos/<owner>/rrms/branches/main/protection -X PUT -F "required_status_checks.contexts[]=npm audit (high+)" -F "required_status_checks.contexts[]=gitleaks" -F "required_status_checks.contexts[]=ESLint + tsc" -F "required_status_checks.contexts[]=Client bundle scan" -F "required_status_checks.contexts[]=semgrep OWASP" -F required_status_checks.strict=true
-```
-
-或在 Settings → Branches 網頁加進 required checks。
+> **Branch Protection 整合**：本 task 不單獨動 main 的 branch protection（避免多次 PUT 誤關欄位）。`npm audit (high+)` 連同其他新增 jobs 在 Task 10 Step 1 一次加進 required status checks。
 
 ---
 
@@ -679,7 +699,9 @@ git commit -m "test(security): verify ZAP detects planted XSS"
 
 ## Task 10: 把新 jobs 加進 Branch Protection required checks
 
-- [ ] **Step 1：用 gh API 更新 branch protection**
+> **單次 PUT 統一所有 contexts**：本 plan 中所有 branch protection 變更僅在此 task 動一次。原因見 [Plan 2 整體分支策略](#plan-2-整體分支策略) 中對 GitHub PUT API 行為的說明。
+
+- [ ] **Step 1：用 gh API 更新 branch protection（含 Phase 5 新增的 doc-audit job）**
 
 ```powershell
 gh api repos/<owner>/rrms/branches/main/protection -X PUT `
@@ -690,14 +712,19 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
   -F "required_status_checks.contexts[]=semgrep OWASP" `
   -F "required_status_checks.contexts[]=npm audit (high+)" `
   -F "required_status_checks.contexts[]=ZAP baseline scan" `
+  -F "required_status_checks.contexts[]=doc-audit" `
   -F "enforce_admins=true" `
   -F "required_pull_request_reviews.dismiss_stale_reviews=true" `
   -F "restrictions=null"
 ```
 
+> **欄位完整性 sanity check**：上述指令必須含 `enforce_admins=true` + `required_pull_request_reviews.dismiss_stale_reviews=true` + `restrictions=null`，因為 GitHub branch protection [PUT API](https://docs.github.com/en/rest/branches/branch-protection?apiVersion=2022-11-28#update-branch-protection) 是整物件取代，省略的欄位 = 重置為預設值。Plan 1 既設的 `enforce_admins=true` 與 `dismiss_stale_reviews=true` **不能在此 task 被默默關掉**。
+>
+> Task 11 的 Vercel build secret scan / L5 是 Vercel 平台級檢查、**不是 GitHub Actions context**，因此不在 required_status_checks 列；改透過 vercel.ts buildCommand 強制（build fail = deploy fail = effectively block）。
+
 - [ ] **Step 2：使用者驗證網頁設定**
 
-到 `https://github.com/<owner>/rrms/settings/branches`，確認 main 的 protection rule 中 required status checks 含全部 6 項。
+到 `https://github.com/<owner>/rrms/settings/branches`，確認 main 的 protection rule 中 required status checks 含全部 7 項（Plan 1 的 4 個 + Plan 2 的 3 個：`npm audit (high+)`、`ZAP baseline scan`、`doc-audit`），且 `enforce_admins` 與 `dismiss_stale_reviews` 仍開啟。
 
 - [ ] **Step 3：紅隊驗證 — 開 PR 故意製造任一 check fail，驗證不能 merge**
 
@@ -720,7 +747,37 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 - [ ] `docs/security/incident-response-playbook.md` 存在
 - [ ] Dependabot 紅隊驗證通過（Task 8）
 - [ ] ZAP 紅隊驗證通過（Task 9）
-- [ ] Branch Protection required status checks 含 6 項：gitleaks、ESLint + tsc、Client bundle scan、semgrep OWASP、npm audit (high+)、ZAP baseline scan
+- [ ] Branch Protection required status checks 含 8 項：gitleaks、ESLint + tsc、Client bundle scan、semgrep OWASP、npm audit (high+)、ZAP baseline scan、**doc-audit**（Task 12）、**vercel build secret scan / L5**（Task 11）
+
+---
+
+## Phase 5 任務（pre-Plan-2 rigorous foundation 並行加入）
+
+> 本 plan 原本止於 Task 10。為對應 [pre-Plan-2 audit](../research/2026-05-10-pre-plan-2-audit.md) 的 ⑩ 額外建議與「文件債緩解 4 招」之招式 1，加入 Task 11、12，併入 Plan 2 同 PR。具體 step 在實作期才寫詳細；本段為框架 + acceptance criteria。
+
+### Task 11: vercel.ts buildCommand 加 secret 掃描（spec §6.7.4 Layer 5）
+
+**目標**：把 spec 原本標 Phase 2 的 Layer 5 提前到 Phase 1 啟用。Vercel build 階段任一掃描 fail → build fail → 不部署。
+
+**Acceptance**：
+- [ ] `vercel.ts` 加 `buildCommand: 'pnpm install --frozen-lockfile && pnpm build && pnpm scan:bundle && gitleaks dir . --no-banner --config .gitleaks.toml'`
+- [ ] 紅隊驗證：故意造 secret 進 client bundle、push、確認 Vercel preview deploy 失敗
+- [ ] spec §6.7.4 Layer 5 從「Phase 2」改為「Phase 1 啟用」
+
+**官方文獻**：[Vercel Project Configuration — buildCommand](https://vercel.com/docs/project-configuration/general#build-command)
+
+### Task 12: doc-audit script + CI integration（文件債緩解招式 1）
+
+**目標**：自動化檢查文件之間的一致性，防止 consistency-audit 第 1 輪那種 21 條 issue 級的 drift 再發生。
+
+**Acceptance**：
+- [ ] `scripts/audit-docs.mjs` 存在、含 6 條檢查（brainstorm hard 決議 → ADR 覆蓋；ADR 引用一致性；已淘汰術語；套件版本一致性；環境變數命名一致性；file path 引用存在）
+- [ ] `package.json` 加 `"audit:docs": "node scripts/audit-docs.mjs"`
+- [ ] `.github/workflows/ci.yml` 加 `doc-audit` job（runs `pnpm audit:docs`）
+- [ ] `doc-audit` 加進 Task 10 Step 1 的 branch protection required checks 清單
+- [ ] 紅隊驗證：故意改文件造 inconsistency、push、確認 CI fail
+
+**前置依賴**：Phase 2 ADR 系統與文件結構重構必須先 merge（Task 12 的某些檢查依賴 ADR 編號存在）。
 
 ---
 

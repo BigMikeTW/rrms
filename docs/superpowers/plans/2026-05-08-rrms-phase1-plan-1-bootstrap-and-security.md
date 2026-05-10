@@ -112,6 +112,7 @@ node --version; pnpm --version; git --version; gh --version; gitleaks version
 
 - [ ] 登入 GitHub CLI：`gh auth login`（選 GitHub.com → HTTPS → Yes 授權 Git → 用瀏覽器登入）
 - [ ] 登入 Vercel CLI：之後安裝 `pnpm add -g vercel` 後跑 `vercel login`（Task 14 才需要）
+- [ ] **確認 Vercel 帳號為 Pro plan（非 Hobby Free）**：登入 https://vercel.com/dashboard → 帳號 / 團隊 Settings → Billing 看「Current Plan」。若是 Hobby Free 必須升 Pro，理由：[Vercel Fair Use Guidelines §Commercial Usage](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage) 明示「Hobby plans are intended for non-commercial, personal use only」；RRMS 為商業營運系統（公司內部 + 客戶報修），用 Hobby 違反 TOS。對應 brainstorm A14、H1 hard 決議。
 
 ### P-3. 建立 GitHub Repo
 
