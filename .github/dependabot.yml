@@ -1,0 +1,71 @@
+# What:  GitHub Dependabot v2 configuration for RRMS. Declares two
+#        ecosystems for weekly automated dependency-update PRs:
+#        (1) `npm` — all direct + transitive Node packages installed by
+#            pnpm, scanned against GitHub Advisory Database.
+#        (2) `github-actions` — every action `uses:` reference in
+#            .github/workflows/*.yml, scanned for newer action releases
+#            and known supply-chain advisories.
+# Why:   Layer 4 supply-chain defense per spec §6.7.4. RRMS Phase 1 has
+#        a single GitHub Actions native security gate (Dependency audit
+#        job on every CI run, ADR-0134 #5). Dependabot complements that
+#        by also auto-OPENING update PRs so we don't accumulate latent
+#        version drift between CI scans. Without Dependabot, a new CVE
+#        is caught by CI only when the next push lands; with Dependabot,
+#        a new advisory triggers a PR within ≤24h regardless of human
+#        push activity. Mondays 06:00 Asia/Taipei chosen to land PRs at
+#        start of work-week for review batching.
+# Where: Repo root: `.github/dependabot.yml`. Read by GitHub-native
+#        Dependabot daemon (no local execution). Effects observable at
+#        https://github.com/BigMikeTW/rrms/network/updates and
+#        https://github.com/BigMikeTW/rrms/security/dependabot.
+# When:  Loaded by Dependabot on first push to default branch after this
+#        file appears. Weekly schedule fires Mondays 06:00 Asia/Taipei.
+#        Security advisories trigger independent of the weekly schedule.
+#
+# Schema: v2 (current and only supported by GitHub as of 2026-05).
+# Reference: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # ----------------------------------------------------------------------
+  # npm — Node package ecosystem (pnpm workspace at repo root)
+  # ----------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Taipei"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Why: minor + patch grouped to reduce PR noise (per Plan 2 Task 2
+      # plan Step 1 rationale). Major bumps stay individual so each
+      # breaking-change merge can be reviewed in isolation.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ----------------------------------------------------------------------
+  # github-actions — Action references inside .github/workflows/*.yml
+  # ----------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Taipei"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(actions)"
