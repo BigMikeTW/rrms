@@ -7,7 +7,7 @@
 | Supersedes | — |
 | Superseded by | — |
 | Brainstorm 來源 | `location-and-coverage-v2.html`, `platform-rigorous-analysis.html` 決議 A17 |
-| Related ADR | ADR-0003, ADR-0016, ADR-0019 |
+| Related ADR | ADR-0003, ADR-0016, ADR-0019, ADR-0089, ADR-0133 |
 
 ## Context
 
@@ -36,3 +36,9 @@ AWS SaaS Lens 三種多租戶資料隔離模型：(1) **Silo** — 每租戶獨�
 
 - AWS SaaS Lens — tenant isolation: https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/tenant-isolation.html
 - PostgreSQL RLS: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Plan 2 mini-audit) | 同 ADR-0089 — Round-3 doc audit 發現與 ADR-0133 多租戶耦合單向引用 | Related ADR 加 ADR-0089, ADR-0133（cross-link 補充；Decision 段不動） |

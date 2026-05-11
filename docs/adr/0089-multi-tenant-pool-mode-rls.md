@@ -7,7 +7,7 @@
 | Supersedes | — |
 | Superseded by | — |
 | Brainstorm 來源 | `location-and-coverage-v2.html` § E 決議 E1; `platform-rigorous-analysis.html` 對應 |
-| Related ADR | ADR-0017, ADR-0067, ADR-0076 |
+| Related ADR | ADR-0017, ADR-0067, ADR-0076, ADR-0077, ADR-0133 |
 
 ## Context
 
@@ -37,3 +37,9 @@ RRMS 將從 Phase 1 的單一業主擴展為 Phase 2 多租戶 SaaS（多家業�
 - AWS SaaS Lens — Tenant Isolation Strategies: https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/tenant-isolation.html
 - PostgreSQL Row Security Policies: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
 - Brainstorm: `location-and-coverage-v2.html` 決議 E1
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Plan 2 mini-audit) | Round-3 doc audit 發現 ADR-0133 §Decision 方案 A（audit_log 跨表真匿名化）與多租戶紀律耦合，但本 ADR Related ADR 未列 0133（單向引用） | Related ADR 加 ADR-0077, ADR-0133（cross-link 補充；Decision 段不動） |

@@ -73,7 +73,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -89,7 +89,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -103,9 +103,12 @@ jobs:
     container:
       # Pinned image tag (no :latest) for reproducibility. The semgrep org
       # was renamed from `returntocorp` to `semgrep` upstream; both still
-      # work but `semgrep/semgrep` is the canonical name. Bump this tag in
-      # a separate PR when adopting a newer semgrep release.
-      image: semgrep/semgrep:1.86.0
+      # work but `semgrep/semgrep` is the canonical name. Bumped 1.86.0 →
+      # 1.162.0 (Plan 2 Task 0 version research — 1.86.0 was ~76 minor
+      # releases behind). Keep bumping this tag in a separate PR when
+      # adopting a newer semgrep release so any ruleset-driven false
+      # positives can be triaged in isolation.
+      image: semgrep/semgrep:1.162.0
     steps:
       - uses: actions/checkout@v6
       - run: semgrep --config p/owasp-top-ten --error
@@ -124,7 +127,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -147,7 +150,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -159,8 +162,11 @@ jobs:
     # with multiple known bugs in `drizzle-kit push` path (issues #3504,
     # #4407, #4198, #3495). RRMS commits to `generate + migrate` only
     # (raw SQL files reviewed). This job greps the repo to ensure no
-    # workflow / script / CLAUDE-edited file accidentally invokes
-    # `drizzle-kit push`. Fails the CI if any match found.
+    # script / package.json / JS-TS file / CI workflow YAML accidentally
+    # invokes `drizzle-kit push`. Fails the CI if any match found. The
+    # grep scans *.yml / *.yaml too (so a future workflow can't slip a
+    # `drizzle-kit push` step past this gate) but excludes ci.yml itself
+    # to avoid self-matching on the error-message string below.
     name: Ban drizzle-kit push
     runs-on: ubuntu-latest
     steps:
@@ -168,17 +174,21 @@ jobs:
       - name: Grep for drizzle-kit push invocations
         run: |
           # Scope the search to file types where the command could actually
-          # be invoked: package.json scripts, shell scripts, JS/TS/MJS,
-          # CI workflow YAMLs (other than this one — see exclude below).
-          # Markdown / ADR / spec / plan files are intentionally excluded —
-          # they may legitimately mention the ban (e.g. ADR-0017 Phase 4
-          # Additions in Plan 3). The .toml gitleaks rule file also fine.
-          # This workflow itself is excluded to prevent self-match on the
-          # error message string below.
+          # be invoked: package.json scripts, shell scripts, JS/TS/MJS, and
+          # CI workflow YAMLs (*.yml / *.yaml — a future workflow could shell
+          # out to `drizzle-kit push` in a step). This workflow file (ci.yml)
+          # is excluded via --exclude=ci.yml because its own error-message
+          # string below contains the literal "drizzle-kit push" and would
+          # otherwise self-match. Markdown / ADR / spec / plan files are
+          # intentionally excluded — they may legitimately mention the ban
+          # (e.g. ADR-0017 Phase 4 Additions in Plan 3). The .toml gitleaks
+          # rule file is also fine to leave out of scope.
           MATCHES=$(grep -rEn \
             --include='*.json' --include='*.sh' --include='*.bash' \
             --include='*.ts' --include='*.tsx' --include='*.mts' \
             --include='*.js' --include='*.mjs' --include='*.cjs' \
+            --include='*.yml' --include='*.yaml' \
+            --exclude=ci.yml \
             --exclude-dir=.git --exclude-dir=node_modules \
             --exclude-dir=.next --exclude-dir=build \
             'drizzle-kit[[:space:]]+push' . || true)
