@@ -223,3 +223,11 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - target: `https://rrms-black.vercel.app`（Plan 8 DNS 換 rrms.pro080.com 時再改）
 - 跳過 plan 原 Step 2 手動觸發測試（PR merge 後使用者自行 trigger 驗證）
 - commit SHA: c15aaec
+
+### Task 7: Incident response playbook（2026-05-11）
+
+- `docs/security/incident-response-playbook.md` 建立（5 類事件 A-E SOP + Secret 輪替清單 + 季度演練）
+- 引 ADR-0076 / 0133 / 0134 + spec §6.8 + 個資法 12 / 施行細則 22 / 憲法法庭 111-13
+- Phase 4 修補：採用「真匿名化策略」（ADR-0133）而非舊版「永久保留」說法
+- 4W docstring 完整
+- commit SHA: 356249e
