@@ -196,3 +196,12 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - 驗證 readback：
   - vulnerability-alerts GET → 204（enabled）✓
   - automated-security-fixes GET → `{"enabled": true, "paused": false}` ✓
+
+### Task 2: Dependabot config（2026-05-11）
+
+- `.github/dependabot.yml` 已建立（v2 schema，npm + github-actions 兩 ecosystem）
+- weekly Monday 06:00 Asia/Taipei
+- minor + patch grouped；major 個別 PR
+- 4W docstring 完整；引 ADR-0134 #5 + spec §6.7.4
+- commit SHA: 7953b7d
+- 驗證：等 Plan 2 PR merge 後檢查 GitHub Insights → Dependabot 是否 active
