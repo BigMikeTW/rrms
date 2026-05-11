@@ -9,6 +9,7 @@
 **Architecture:** GitHub Dependabot（GitHub 內建免費）監控 npm + GitHub Actions 套件版本，命中漏洞時開 PR 升級；新增 GitHub Actions workflow `security-zap.yml` 在 PR 與每日凌晨對 Vercel preview / production URL 跑 ZAP baseline scan；新增 `npm-audit` job 在主 CI 強制執行；任一掃描出問題 → `actions/github-script` 自動開 GitHub issue 並標記 `security` label，repo 預設會把該 issue email 給 maintainer。
 
 **Tech Stack:**
+
 - GitHub Dependabot（GitHub 原生功能；零成本）
 - `dependabot.yml` 設定檔（v2 schema）
 - `npm audit`（pnpm 內建）
@@ -25,12 +26,12 @@
 
 對應 spec [docs/superpowers/specs/2026-05-07-rrms-phase1-design.md](../specs/2026-05-07-rrms-phase1-design.md):
 
-| Spec 章節 | 本計畫覆蓋 |
-|---|---|
-| 6.7.4 共用掃描清單第 6 項「semgrep OWASP rule pack」 | Plan 1 已部分；本計畫補 ZAP baseline 為動態驗證 |
-| 6.7.4 Phase 1 啟用清單第 9 項「驗證五層皆能正確擋下故意植入的 secret」 | Task 9 + Task 10 紅隊驗證 |
-| 6.8 外洩通報 SOP（內部文件） | Task 8 提供實作版 incident response playbook |
-| 9. 風險與假設 | Dependabot 自動處理「依賴套件突發漏洞」這類風險 |
+| Spec 章節                                                              | 本計畫覆蓋                                      |
+| ---------------------------------------------------------------------- | ----------------------------------------------- |
+| 6.7.4 共用掃描清單第 6 項「semgrep OWASP rule pack」                   | Plan 1 已部分；本計畫補 ZAP baseline 為動態驗證 |
+| 6.7.4 Phase 1 啟用清單第 9 項「驗證五層皆能正確擋下故意植入的 secret」 | Task 9 + Task 10 紅隊驗證                       |
+| 6.8 外洩通報 SOP（內部文件）                                           | Task 8 提供實作版 incident response playbook    |
+| 9. 風險與假設                                                          | Dependabot 自動處理「依賴套件突發漏洞」這類風險 |
 
 ---
 
@@ -100,14 +101,14 @@ gh pr merge <PR#> --auto --merge
 
 - [ ] **Step 1：fetch 各官方文件，記錄當下 latest stable 版本與 API 變化**
 
-| 技術 / 工具 | 官方文件 |
-|---|---|
-| GitHub Dependabot 配置 | https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file |
-| Dependabot Security Updates 啟用 | https://docs.github.com/en/code-security/dependabot/dependabot-security-updates/about-dependabot-security-updates |
-| `gh api` repos vulnerability-alerts | https://docs.github.com/en/rest/repos/repos#enable-vulnerability-alerts |
-| OWASP ZAP Baseline GitHub Action | https://github.com/zaproxy/action-baseline |
-| GitHub Actions schedule cron 語法 | https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule |
-| `actions/github-script` 開 issue 範例 | https://github.com/actions/github-script |
+| 技術 / 工具                           | 官方文件                                                                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub Dependabot 配置                | https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file |
+| Dependabot Security Updates 啟用      | https://docs.github.com/en/code-security/dependabot/dependabot-security-updates/about-dependabot-security-updates                |
+| `gh api` repos vulnerability-alerts   | https://docs.github.com/en/rest/repos/repos#enable-vulnerability-alerts                                                          |
+| OWASP ZAP Baseline GitHub Action      | https://github.com/zaproxy/action-baseline                                                                                       |
+| GitHub Actions schedule cron 語法     | https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule                                        |
+| `actions/github-script` 開 issue 範例 | https://github.com/actions/github-script                                                                                         |
 
 - [ ] **Step 2：記錄到 `docs/superpowers/research/2026-05-08-security-platform-versions.md`**
 
@@ -133,6 +134,7 @@ git commit -m "docs: research security platform versions"
 > ⚠️ 修改 GitHub repo 設定屬於「shared state」。執行前必須使用者確認。
 
 執行前對使用者說：
+
 > 「我準備跑兩個 `gh api` 指令對 `<owner>/rrms` 啟用 Dependabot vulnerability alerts 與 automated security fixes。這會修改你 GitHub repo 設定，效果是當套件被公告漏洞時自動發 email 通知 + 自動開升級 PR。OK 嗎？」
 
 得「OK」後繼續。
@@ -142,6 +144,7 @@ git commit -m "docs: research security platform versions"
 ```powershell
 gh api repos/<owner>/rrms/vulnerability-alerts -X PUT
 ```
+
 > 把 `<owner>` 換成你的 GitHub 帳號。
 
 預期：HTTP 204 No Content（無輸出，return 0）。
@@ -157,6 +160,7 @@ gh api repos/<owner>/rrms/automated-security-fixes -X PUT
 - [ ] **Step 4：使用者手動驗證**
 
 到 `https://github.com/<owner>/rrms/settings/security_analysis`，確認：
+
 - Dependabot alerts：**Enabled**
 - Dependabot security updates：**Enabled**
 
@@ -226,6 +230,7 @@ git push
 - [ ] **Step 3：使用者驗證 Dependabot 開始運作**
 
 去 `https://github.com/<owner>/rrms/network/updates`，確認：
+
 - 看到 Dependabot 列表
 - 「Last checked」有時間戳
 
@@ -256,19 +261,19 @@ git push
 開 `.github/workflows/ci.yml`，在 `jobs:` 區塊內補：
 
 ```yaml
-  npm-audit:
-    name: npm audit (high+)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Audit dependencies (fail on high+ severity)
-        run: pnpm audit --audit-level=high
+npm-audit:
+  name: npm audit (high+)
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v6
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+    - name: Audit dependencies (fail on high+ severity)
+      run: pnpm audit --audit-level=high
 ```
 
 > 為什麼選 `high`：讓 low / moderate 級別的漏洞由 Dependabot 處理（自動開 PR），CI 只擋 high / critical 等級避免太多 PR 被擋住。
@@ -349,13 +354,14 @@ jobs:
         uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ steps.vercel.outputs.url }}
-          rules_file_name: '.zap/rules.tsv'
+          rules_file_name: ".zap/rules.tsv"
           fail_action: true
           allow_issue_writing: true
-          issue_title: '[Security] ZAP baseline scan failed on PR #${{ github.event.pull_request.number }}'
+          issue_title: "[Security] ZAP baseline scan failed on PR #${{ github.event.pull_request.number }}"
 ```
 
 來源：
+
 - ZAP Baseline Action https://github.com/zaproxy/action-baseline
 - wait-for-vercel-preview Action https://github.com/patrickedqvist/wait-for-vercel-preview
 
@@ -376,11 +382,13 @@ gh pr create --title "test: ZAP pipeline" --body "Verify ZAP scans Vercel previe
 ```
 
 到 PR 頁面確認：
+
 - Vercel preview 部署完成
 - `Security — ZAP baseline (PR)` workflow 啟動
 - ZAP 掃 preview URL 通過（無 high alert）
 
 驗證後關 PR 不 merge：
+
 ```powershell
 gh pr close <PR 號碼> --delete-branch
 git checkout main
@@ -402,8 +410,8 @@ name: Security — ZAP daily
 
 on:
   schedule:
-    - cron: '0 18 * * *'  # 18:00 UTC = 02:00 Asia/Taipei
-  workflow_dispatch:  # 也允許手動觸發以便測試
+    - cron: "0 18 * * *" # 18:00 UTC = 02:00 Asia/Taipei
+  workflow_dispatch: # 也允許手動觸發以便測試
 
 jobs:
   zap-daily:
@@ -420,11 +428,11 @@ jobs:
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.15.0
         with:
-          target: 'https://rrms.pro080.com'
-          rules_file_name: '.zap/rules.tsv'
+          target: "https://rrms.pro080.com"
+          rules_file_name: ".zap/rules.tsv"
           fail_action: true
           allow_issue_writing: true
-          issue_title: '[Security] Daily ZAP scan failed (production)'
+          issue_title: "[Security] Daily ZAP scan failed (production)"
 ```
 
 > 把 `rrms.pro080.com` 換成你的真實 production 域名（Plan 8 設定 DNS 後才有真值；本任務先填 Vercel 預設 `https://rrms.vercel.app`，未來 Plan 8 再改）。
@@ -492,13 +500,13 @@ git checkout main
 
 ## 事件分類
 
-| 類別 | 範例 | 嚴重度 |
-|---|---|---|
-| **A. 套件漏洞 (CVE)** | Dependabot alert / npm audit 警告 | low - critical |
-| **B. 動態掃描警告** | ZAP daily scan 報 high+ | high |
-| **C. 認證 / 授權異常** | 後台被未授權存取、cookie 被盜 | critical |
-| **D. 資料外洩疑慮** | DB 誤刪、客戶反映看到別人資料、log 含個資 | critical |
-| **E. 服務不可用** | Vercel 部署失敗、DB 連線異常 | medium-high |
+| 類別                   | 範例                                      | 嚴重度         |
+| ---------------------- | ----------------------------------------- | -------------- |
+| **A. 套件漏洞 (CVE)**  | Dependabot alert / npm audit 警告         | low - critical |
+| **B. 動態掃描警告**    | ZAP daily scan 報 high+                   | high           |
+| **C. 認證 / 授權異常** | 後台被未授權存取、cookie 被盜             | critical       |
+| **D. 資料外洩疑慮**    | DB 誤刪、客戶反映看到別人資料、log 含個資 | critical       |
+| **E. 服務不可用**      | Vercel 部署失敗、DB 連線異常              | medium-high    |
 
 ## 各類別處理流程
 
@@ -552,19 +560,20 @@ git checkout main
 
 當需要輪替 secret 時依序處理（必須記在 audit log）：
 
-| Secret | 輪替方式 | 影響 |
-|---|---|---|
-| `DATABASE_URL` | Neon dashboard 重設密碼 → 更新 Vercel env | 重新部署觸發新 connection |
-| `BETTER_AUTH_SECRET` | 自行生成 32 字元 random → 更新 Vercel env | 所有現有 session 失效，使用者需重新登入 |
-| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` | LINE Developers Console reissue | 推播暫斷直到 token 更新；舊 token 30 分鐘內失效 |
-| `LINE_MESSAGING_CHANNEL_SECRET` | LINE Developers Console reissue | webhook 簽章驗證會用新 secret |
-| `DROPBOX_REFRESH_TOKEN` | Dropbox App Console revoke + 重新 OAuth | 媒體上傳暫停，需在後台重綁 |
-| `GOOGLE_CLIENT_SECRET` | Google Cloud Console reset | Google 登入暫停直到更新 |
-| `LINE_LOGIN_CHANNEL_SECRET` | LINE Developers Console reissue | LINE 登入暫停直到更新 |
+| Secret                                | 輪替方式                                  | 影響                                            |
+| ------------------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| `DATABASE_URL`                        | Neon dashboard 重設密碼 → 更新 Vercel env | 重新部署觸發新 connection                       |
+| `BETTER_AUTH_SECRET`                  | 自行生成 32 字元 random → 更新 Vercel env | 所有現有 session 失效，使用者需重新登入         |
+| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` | LINE Developers Console reissue           | 推播暫斷直到 token 更新；舊 token 30 分鐘內失效 |
+| `LINE_MESSAGING_CHANNEL_SECRET`       | LINE Developers Console reissue           | webhook 簽章驗證會用新 secret                   |
+| `DROPBOX_REFRESH_TOKEN`               | Dropbox App Console revoke + 重新 OAuth   | 媒體上傳暫停，需在後台重綁                      |
+| `GOOGLE_CLIENT_SECRET`                | Google Cloud Console reset                | Google 登入暫停直到更新                         |
+| `LINE_LOGIN_CHANNEL_SECRET`           | LINE Developers Console reissue           | LINE 登入暫停直到更新                           |
 
 ## 演練
 
 每季一次紅隊演練（紙上推演）：
+
 - 隨機抽一個情境（A-E）
 - 計時走完一遍流程
 - 檢討哪裡卡關 → 更新 playbook
@@ -622,6 +631,7 @@ git checkout main
 - [ ] **Step 7：把驗證結果寫進 research 報告**
 
 `docs/superpowers/research/2026-05-08-dependabot-redteam-result.md`：
+
 ```markdown
 # Dependabot 紅隊驗證結果
 
@@ -629,6 +639,7 @@ git checkout main
 方法：故意安裝 lodash@4.17.20（有公開 CVE-2021-23337）
 
 結果：
+
 - npm-audit job：✅ FAIL（如預期擋下）
 - Dependabot Security Advisory：✅ 偵測到（X 小時內）
 - 自動升級 PR：✅ 出現
@@ -692,6 +703,7 @@ git checkout main
 - [ ] **Step 5：把驗證結果寫進 research 報告**
 
 `docs/superpowers/research/2026-05-08-zap-redteam-result.md`：
+
 ```markdown
 # ZAP baseline 紅隊驗證結果
 
@@ -699,6 +711,7 @@ git checkout main
 方法：故意建立 src/app/red-team-xss/page.tsx，使用 dangerouslySetInnerHTML 反射 query string
 
 結果：
+
 - ZAP baseline workflow：✅ FAIL（如預期擋下）
 - 自動開立 GitHub issue：✅ 已建立
 - 偵測到的警告：（從 ZAP 報告貼相關內容）
@@ -742,16 +755,16 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 
 到 `https://github.com/<owner>/rrms/settings/branches`，確認 main 的 protection rule 中 required status checks 含全部 **8 項**：
 
-| 來源 | Context name（須完全對齊 ci.yml `name:` 欄位） |
-|---|---|
-| Plan 1 | `gitleaks` |
-| Plan 1 | `ESLint + tsc` |
-| Plan 1 | `Client bundle scan` |
-| Plan 1 | `semgrep OWASP` |
-| Phase 4 | `Doc audit` |
-| Phase 4 | `Dependency audit` |
-| Phase 4 | `Ban drizzle-kit push` |
-| Plan 2（本 task）| `ZAP baseline scan` |
+| 來源              | Context name（須完全對齊 ci.yml `name:` 欄位） |
+| ----------------- | ---------------------------------------------- |
+| Plan 1            | `gitleaks`                                     |
+| Plan 1            | `ESLint + tsc`                                 |
+| Plan 1            | `Client bundle scan`                           |
+| Plan 1            | `semgrep OWASP`                                |
+| Phase 4           | `Doc audit`                                    |
+| Phase 4           | `Dependency audit`                             |
+| Phase 4           | `Ban drizzle-kit push`                         |
+| Plan 2（本 task） | `ZAP baseline scan`                            |
 
 且 `enforce_admins` 與 `dismiss_stale_reviews` 仍開啟。
 
@@ -792,6 +805,7 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 **目標**：把 spec 原本標 Phase 2 的 Layer 5 提前到 Phase 1 啟用。Vercel build 階段任一掃描 fail → build fail → 不部署。
 
 **Acceptance**：
+
 - [ ] `vercel.ts` 加 `buildCommand: 'pnpm install --frozen-lockfile && pnpm build && pnpm scan:bundle && gitleaks dir . --no-banner --config .gitleaks.toml'`
 - [ ] 紅隊驗證：故意造 secret 進 client bundle、push、確認 Vercel preview deploy 失敗
 - [ ] spec §6.7.4 Layer 5 從「Phase 2」改為「Phase 1 啟用」
@@ -805,6 +819,7 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 > **🟢 已 Phase 4 落地 — Task 12 改為 regression 驗收**
 >
 > Phase 4 (PR #10) + Phase 4 hotfix (PR #11) 已落地：
+>
 > - [`scripts/audit-docs.mjs`](../../../scripts/audit-docs.mjs)：**6 個 top-level check function**（ADR file integrity / ADR reference consistency / Deprecated-term scan / Package-version drift / Env-var naming consistency / Markdown link integrity；其中 ADR file integrity 內嵌 Amendment Policy 驗證、Markdown link integrity 內嵌 continue.md exception）
 > - `package.json` 已加 `"audit:docs": "node scripts/audit-docs.mjs"`
 > - [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) 行 113–132 已加 `Doc audit` job
@@ -821,6 +836,7 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 > ---
 
 **Acceptance**（已落地，保留作 regression）：
+
 - [x] `scripts/audit-docs.mjs` 存在、含 **6 個 top-level check function**（ADR file integrity / ADR reference consistency / Deprecated-term scan / Package-version drift / Env-var naming consistency / Markdown link integrity）+ Phase 4 加：ADR Amendment Policy validation（內嵌於 ADR file integrity）+ continue.md exception（內嵌於 Markdown link integrity）
 - [x] `package.json` 加 `"audit:docs": "node scripts/audit-docs.mjs"`
 - [x] `.github/workflows/ci.yml` 加 `Doc audit` job（runs `pnpm audit:docs`）
@@ -836,10 +852,12 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 **Spec coverage**：對應 spec 6.7.4 + 6.8 全部章節都已覆蓋。
 
 **Placeholder scan**：
+
 - ZAP daily 中的 `rrms.pro080.com` 是必要 placeholder（DNS 在 Plan 8 才設定）— 已在 Task 5 Step 1 加註備案使用 vercel.app
 - Task 7 playbook 中「LINE 群組 / Email / 法律顧問」是業務窗口資訊，須使用者填，這類「待真實資料」的 placeholder 不算 plan 失敗
 
 **Type / 命名一致性**：
+
 - Workflow 名稱 `Security — ZAP baseline (PR)` 與 `Security — ZAP daily` 在計畫內前後一致
 - `npm audit (high+)` job 名稱在 ci.yml 與 branch protection 中一致
 

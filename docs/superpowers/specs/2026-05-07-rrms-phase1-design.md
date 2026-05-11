@@ -1,10 +1,10 @@
 # RRMS Phase 1 設計文件
 
-| 項目 | 值 |
-|---|---|
-| 日期 | 2026-05-07 |
-| 狀態 | Draft，待使用者確認 |
-| 範圍 | Phase 1（簡易報修系統） |
+| 項目         | 值                                   |
+| ------------ | ------------------------------------ |
+| 日期         | 2026-05-07                           |
+| 狀態         | Draft，待使用者確認                  |
+| 範圍         | Phase 1（簡易報修系統）              |
 | 目標上線時程 | 短時間內（具體日期待 plan 階段確認） |
 
 ---
@@ -28,42 +28,42 @@
 
 ### 2.1 Phase 1（本文件範圍）
 
-| 模組 | 內容 |
-|---|---|
-| 公開報修表單 | 無需登入；姓名、手機、Email、公司/單位、地點（自由文字）、內容、照片/影片（不限張數，存 Dropbox） |
-| 隱私告知與同意 | 隱私告知聲明 + 必勾同意 + 時間戳記錄 |
-| 後台管理 | 公司同事登入後檢視所有案件、變更狀態、查看媒體 |
-| 認證 | Email + 密碼、Google OAuth、LINE Login（管理端三選一） |
-| LINE 通知 | 新案件 → 推內部 LINE 群組；狀態變更 → 推綁定的客戶（若已綁定） |
-| LINE OA 查詢 | 客戶輸入「報修編號 + 手機末四碼」雙重驗證後，Bot 回案件狀態（僅揭露最小欄位） |
-| 案件編號 | `RPR-YYYYMMDDXXX` 每日序號 |
-| 狀態流程 | 已立案 → 派工中 → 已派工 → 已完成 / 已取消（每階段記錄時間戳） |
-| 自動匿名化 | 結案翌日起算 2 年到期，凌晨排程執行 |
-| 個資權利請求 | LINE OA 選單「我要查詢/更正/刪除我的資料」→ 後台同事手動處理 |
-| 環境 | Production + Preview/Dev 兩環境 |
+| 模組           | 內容                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| 公開報修表單   | 無需登入；姓名、手機、Email、公司/單位、地點（自由文字）、內容、照片/影片（不限張數，存 Dropbox） |
+| 隱私告知與同意 | 隱私告知聲明 + 必勾同意 + 時間戳記錄                                                              |
+| 後台管理       | 公司同事登入後檢視所有案件、變更狀態、查看媒體                                                    |
+| 認證           | Email + 密碼、Google OAuth、LINE Login（管理端三選一）                                            |
+| LINE 通知      | 新案件 → 推內部 LINE 群組；狀態變更 → 推綁定的客戶（若已綁定）                                    |
+| LINE OA 查詢   | 客戶輸入「報修編號 + 手機末四碼」雙重驗證後，Bot 回案件狀態（僅揭露最小欄位）                     |
+| 案件編號       | `RPR-YYYYMMDDXXX` 每日序號                                                                        |
+| 狀態流程       | 已立案 → 派工中 → 已派工 → 已完成 / 已取消（每階段記錄時間戳）                                    |
+| 自動匿名化     | 結案翌日起算 2 年到期，凌晨排程執行                                                               |
+| 個資權利請求   | LINE OA 選單「我要查詢/更正/刪除我的資料」→ 後台同事手動處理                                      |
+| 環境           | Production + Preview/Dev 兩環境                                                                   |
 
 ### 2.2 明確排除（延後到 Phase 2 或更後）
 
-| 不做 | 原因 |
-|---|---|
-| 客戶端登入帳號（Google/LINE 登入） | 客戶端 Phase 1 不需登入；填表即可 |
-| 客戶公司管理員角色（多租戶） | Phase 2 再規劃 |
-| LINE OA 自動列出客戶所有案件 | Phase 2，需先有客戶綁定機制 |
-| 後台敏感資料遮罩 + JIT 授權 + 稽核紀錄 | Phase 2，先有真實資料量再導入 |
-| 欄位級加密 | 不做（Neon at-rest 加密足夠 Phase 1） |
-| 行銷利用客戶資料 | 不做 |
-| Demo / Stage 環境 | Phase 2 再加 |
-| 客戶自助查詢/刪除介面 | Phase 1 用 LINE 訊息申請即可 |
+| 不做                                   | 原因                                  |
+| -------------------------------------- | ------------------------------------- |
+| 客戶端登入帳號（Google/LINE 登入）     | 客戶端 Phase 1 不需登入；填表即可     |
+| 客戶公司管理員角色（多租戶）           | Phase 2 再規劃                        |
+| LINE OA 自動列出客戶所有案件           | Phase 2，需先有客戶綁定機制           |
+| 後台敏感資料遮罩 + JIT 授權 + 稽核紀錄 | Phase 2，先有真實資料量再導入         |
+| 欄位級加密                             | 不做（Neon at-rest 加密足夠 Phase 1） |
+| 行銷利用客戶資料                       | 不做                                  |
+| Demo / Stage 環境                      | Phase 2 再加                          |
+| 客戶自助查詢/刪除介面                  | Phase 1 用 LINE 訊息申請即可          |
 
 ---
 
 ## 3. 系統角色
 
-| 角色 | Phase 1 行為 | 認證方式 |
-|---|---|---|
-| 客戶（報修人） | 填寫報修表單；LINE OA 查詢案件狀態 | 不需登入 |
-| 後台同事 | 檢視所有案件、變更狀態、查看媒體 | Email/密碼 OR Google OR LINE Login |
-| 系統管理員（superuser） | 同上 + 建立/停用同事帳號 | 同上 |
+| 角色                    | Phase 1 行為                       | 認證方式                           |
+| ----------------------- | ---------------------------------- | ---------------------------------- |
+| 客戶（報修人）          | 填寫報修表單；LINE OA 查詢案件狀態 | 不需登入                           |
+| 後台同事                | 檢視所有案件、變更狀態、查看媒體   | Email/密碼 OR Google OR LINE Login |
+| 系統管理員（superuser） | 同上 + 建立/停用同事帳號           | 同上                               |
 
 **Phase 1 權限粒度**：兩級（同事 / 管理員）。同事看所有案件、改狀態；管理員多了「帳號管理」權限。
 
@@ -77,16 +77,16 @@
 
 **欄位**：
 
-| 欄位 | 型別 | 必填 | 備註 |
-|---|---|---|---|
-| 姓名 | string | ✅ | |
-| 手機 | string | ✅ | 台灣手機格式驗證 (`/^09\d{8}$/`) |
-| Email | string | ✅ | 標準 email 驗證 |
-| 公司/單位名稱 | string | ✅ | |
-| 報修地點 | string | ✅ | 自由文字 |
-| 報修內容 | text | ✅ | 自由文字 |
-| 照片/影片 | file[] | ❌ | 不限張數；上傳到 Dropbox |
-| 隱私同意 | checkbox | ✅ | 勾選並記錄時間戳；不勾不能送出 |
+| 欄位          | 型別     | 必填 | 備註                             |
+| ------------- | -------- | ---- | -------------------------------- |
+| 姓名          | string   | ✅   |                                  |
+| 手機          | string   | ✅   | 台灣手機格式驗證 (`/^09\d{8}$/`) |
+| Email         | string   | ✅   | 標準 email 驗證                  |
+| 公司/單位名稱 | string   | ✅   |                                  |
+| 報修地點      | string   | ✅   | 自由文字                         |
+| 報修內容      | text     | ✅   | 自由文字                         |
+| 照片/影片     | file[]   | ❌   | 不限張數；上傳到 Dropbox         |
+| 隱私同意      | checkbox | ✅   | 勾選並記錄時間戳；不勾不能送出   |
 
 **送出後行為**：
 
@@ -107,13 +107,13 @@
 
 **主要頁面**：
 
-| 頁面 | 功能 |
-|---|---|
-| Dashboard | 數字摘要：今日新案件 / 待處理 / 處理中 / 本月已完成 |
-| 案件列表 | 表格：編號、報修人、公司、地點、狀態、立案時間 / 排序 / 搜尋 / 狀態篩選 |
-| 案件詳情 | 顯示所有欄位、媒體 thumbnail（點開預覽）、狀態歷史、變更狀態的按鈕 |
-| 帳號管理（僅管理員） | 列出同事帳號；新增（Email/密碼）；停用 |
-| 個人設定 | 更換密碼、綁定 Google/LINE |
+| 頁面                 | 功能                                                                    |
+| -------------------- | ----------------------------------------------------------------------- |
+| Dashboard            | 數字摘要：今日新案件 / 待處理 / 處理中 / 本月已完成                     |
+| 案件列表             | 表格：編號、報修人、公司、地點、狀態、立案時間 / 排序 / 搜尋 / 狀態篩選 |
+| 案件詳情             | 顯示所有欄位、媒體 thumbnail（點開預覽）、狀態歷史、變更狀態的按鈕      |
+| 帳號管理（僅管理員） | 列出同事帳號；新增（Email/密碼）；停用                                  |
+| 個人設定             | 更換密碼、綁定 Google/LINE                                              |
 
 **狀態變更**：每次按下「派工中 → 已派工」等變更時，記錄 `actor_user_id` + `changed_at`，寫入 `case_status_history` 表。
 
@@ -123,11 +123,11 @@
 
 **登入方式（Phase 1，admin 側專用）**：
 
-| 方式 | Provider | 備註 |
-|---|---|---|
+| 方式         | Provider                                | 備註                                                                 |
+| ------------ | --------------------------------------- | -------------------------------------------------------------------- |
 | Email + 密碼 | Better Auth `emailAndPassword` provider | 帳號統一用 Email；密碼用 Better Auth 內建 scrypt 雜湊（無需 bcrypt） |
-| Google | Google OAuth provider | 內建 |
-| LINE | 自訂 OAuth provider | 用 LINE Login channel 設定 |
+| Google       | Google OAuth provider                   | 內建                                                                 |
+| LINE         | 自訂 OAuth provider                     | 用 LINE Login channel 設定                                           |
 
 **帳號建立**：管理員在後台建帳號 → 系統寄一封啟用信（含一次性連結）→ 同事點連結設密碼。Google / LINE 登入則由同事自行綁定到既有帳號。
 
@@ -230,75 +230,75 @@
 
 ### 5.1 `user`（後台同事；Better Auth 預設單數命名）
 
-| 欄位 | 型別 | 備註 |
-|---|---|---|
-| id | text | PK（Better Auth 預設文字 ID；對應 Plan 3 schema） |
-| email | text | unique |
-| password_hash | text | nullable（用 OAuth 者可為 null） |
-| name | text | |
-| role | enum | `staff` / `admin` |
-| google_sub | text | nullable |
-| line_user_id | text | nullable |
-| disabled_at | timestamptz | nullable |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
+| 欄位          | 型別        | 備註                                              |
+| ------------- | ----------- | ------------------------------------------------- |
+| id            | text        | PK（Better Auth 預設文字 ID；對應 Plan 3 schema） |
+| email         | text        | unique                                            |
+| password_hash | text        | nullable（用 OAuth 者可為 null）                  |
+| name          | text        |                                                   |
+| role          | enum        | `staff` / `admin`                                 |
+| google_sub    | text        | nullable                                          |
+| line_user_id  | text        | nullable                                          |
+| disabled_at   | timestamptz | nullable                                          |
+| created_at    | timestamptz |                                                   |
+| updated_at    | timestamptz |                                                   |
 
 ### 5.2 `cases`（報修單）
 
-| 欄位 | 型別 | 備註 |
-|---|---|---|
-| id | uuid | PK |
-| case_no | text | unique；`RPR-YYYYMMDDXXX`（每日序號 000-999） |
-| reporter_name | text | |
-| reporter_phone | text | |
-| reporter_email | text | |
-| reporter_company | text | |
-| location | text | |
-| description | text | |
-| status | enum | `filed` / `dispatching` / `dispatched` / `completed` / `cancelled` |
-| line_user_id | text | nullable，客戶若有綁定 LINE |
-| consent_at | timestamptz | 同意時間戳 |
-| consent_text_version | text | 同意當下的告知聲明版本號 |
-| filed_at | timestamptz | |
-| closed_at | timestamptz | nullable，狀態變 completed/cancelled 時填 |
-| anonymized_at | timestamptz | nullable，匿名化執行時間 |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
-| tenant_id | uuid | nullable；Phase 1 全填預設值，Phase 2 用於多租戶 |
+| 欄位                 | 型別        | 備註                                                               |
+| -------------------- | ----------- | ------------------------------------------------------------------ |
+| id                   | uuid        | PK                                                                 |
+| case_no              | text        | unique；`RPR-YYYYMMDDXXX`（每日序號 000-999）                      |
+| reporter_name        | text        |                                                                    |
+| reporter_phone       | text        |                                                                    |
+| reporter_email       | text        |                                                                    |
+| reporter_company     | text        |                                                                    |
+| location             | text        |                                                                    |
+| description          | text        |                                                                    |
+| status               | enum        | `filed` / `dispatching` / `dispatched` / `completed` / `cancelled` |
+| line_user_id         | text        | nullable，客戶若有綁定 LINE                                        |
+| consent_at           | timestamptz | 同意時間戳                                                         |
+| consent_text_version | text        | 同意當下的告知聲明版本號                                           |
+| filed_at             | timestamptz |                                                                    |
+| closed_at            | timestamptz | nullable，狀態變 completed/cancelled 時填                          |
+| anonymized_at        | timestamptz | nullable，匿名化執行時間                                           |
+| created_at           | timestamptz |                                                                    |
+| updated_at           | timestamptz |                                                                    |
+| tenant_id            | uuid        | nullable；Phase 1 全填預設值，Phase 2 用於多租戶                   |
 
 ### 5.3 `case_status_history`
 
-| 欄位 | 型別 | 備註 |
-|---|---|---|
-| id | uuid | PK |
-| case_id | uuid | FK → cases |
-| from_status | enum | |
-| to_status | enum | |
-| changed_by_user_id | text | FK → user.id（Better Auth 用 text PK） |
-| changed_at | timestamptz | |
-| note | text | nullable |
+| 欄位               | 型別        | 備註                                   |
+| ------------------ | ----------- | -------------------------------------- |
+| id                 | uuid        | PK                                     |
+| case_id            | uuid        | FK → cases                             |
+| from_status        | enum        |                                        |
+| to_status          | enum        |                                        |
+| changed_by_user_id | text        | FK → user.id（Better Auth 用 text PK） |
+| changed_at         | timestamptz |                                        |
+| note               | text        | nullable                               |
 
 ### 5.4 `case_media`
 
-| 欄位 | 型別 | 備註 |
-|---|---|---|
-| id | uuid | PK |
-| case_id | uuid | FK → cases |
-| dropbox_path | text | |
-| mime_type | text | |
-| size_bytes | bigint | |
-| uploaded_at | timestamptz | |
+| 欄位         | 型別        | 備註       |
+| ------------ | ----------- | ---------- |
+| id           | uuid        | PK         |
+| case_id      | uuid        | FK → cases |
+| dropbox_path | text        |            |
+| mime_type    | text        |            |
+| size_bytes   | bigint      |            |
+| uploaded_at  | timestamptz |            |
 
 ### 5.5 `line_bindings`
 
-| 欄位 | 型別 | 備註 |
-|---|---|---|
-| line_user_id | text | PK |
-| reporter_phone | text | nullable，可在 LINE OA 中綁定後填 |
-| reporter_email | text | nullable |
-| reporter_name | text | nullable |
-| reporter_company | text | nullable |
-| linked_at | timestamptz | |
+| 欄位             | 型別        | 備註                              |
+| ---------------- | ----------- | --------------------------------- |
+| line_user_id     | text        | PK                                |
+| reporter_phone   | text        | nullable，可在 LINE OA 中綁定後填 |
+| reporter_email   | text        | nullable                          |
+| reporter_name    | text        | nullable                          |
+| reporter_company | text        | nullable                          |
+| linked_at        | timestamptz |                                   |
 
 > 「下次帶入舊資料」依 `line_user_id` 從此表撈，不從 `cases` 撈（避免被匿名化後失效）。
 
@@ -308,14 +308,14 @@
 
 ### 5.7 `query_attempts`（LINE OA 查詢驗證紀錄）
 
-| 欄位 | 型別 | 備註 |
-|---|---|---|
-| id | uuid | PK |
-| line_user_id | text | 提交查詢的 LINE userId |
-| case_no_attempted | text | 客戶輸入的編號 |
-| phone_last4_attempted | text | 客戶輸入的末四碼（雜湊或留明文後續匿名化） |
-| success | boolean | 驗證通過與否 |
-| attempted_at | timestamptz | |
+| 欄位                  | 型別        | 備註                                       |
+| --------------------- | ----------- | ------------------------------------------ |
+| id                    | uuid        | PK                                         |
+| line_user_id          | text        | 提交查詢的 LINE userId                     |
+| case_no_attempted     | text        | 客戶輸入的編號                             |
+| phone_last4_attempted | text        | 客戶輸入的末四碼（雜湊或留明文後續匿名化） |
+| success               | boolean     | 驗證通過與否                               |
+| attempted_at          | timestamptz |                                            |
 
 > 用於 4.4.3 的 rate limiting 邏輯與後台告警偵測。同一案件被匿名化時，`query_attempts` 中對應紀錄一併清除。
 
@@ -353,48 +353,48 @@
 
 #### 6.3.1 reporter PII 保存與匿名化
 
-| 規則 | 內容 |
-|---|---|
-| 保存期限 | 結案翌日起 **2 年** |
-| 到期處理 | **真匿名化**（不可逆），非加密；同步觸發 audit_log 跨表處理（見 6.3.2） |
-| 排程 | 每日 03:00 台北時間（19:00 UTC 前一天）執行 Vercel Cron Job |
-| 例外 | 客戶提前透過 LINE OA「我要刪除資料」/「我要停止利用」→ 7 個工作日內處理（per 個資法第 13 條 + ADR-0133 方案 D） |
+| 規則     | 內容                                                                                                            |
+| -------- | --------------------------------------------------------------------------------------------------------------- |
+| 保存期限 | 結案翌日起 **2 年**                                                                                             |
+| 到期處理 | **真匿名化**（不可逆），非加密；同步觸發 audit_log 跨表處理（見 6.3.2）                                         |
+| 排程     | 每日 03:00 台北時間（19:00 UTC 前一天）執行 Vercel Cron Job                                                     |
+| 例外     | 客戶提前透過 LINE OA「我要刪除資料」/「我要停止利用」→ 7 個工作日內處理（per 個資法第 13 條 + ADR-0133 方案 D） |
 
 **匿名化欄位**（user / cases / case_media 表）：
 
-| 欄位 | 處理方式 |
-|---|---|
-| reporter_name | → `(已匿名)` |
-| reporter_phone | → null |
-| reporter_email | → null |
-| line_user_id | → null |
-| 報修地點若含個人地址 | → 路段層級保留，門牌移除（Phase 1 為 free text，無法自動處理；先全清為 `(已匿名)`，Phase 2 改進） |
-| 媒體 | 從 Dropbox 刪除，case_media 紀錄刪除 |
-| 案件編號、案件類型、立案/結案時間、處理時長、公司名稱 | 保留 |
+| 欄位                                                  | 處理方式                                                                                          |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| reporter_name                                         | → `(已匿名)`                                                                                      |
+| reporter_phone                                        | → null                                                                                            |
+| reporter_email                                        | → null                                                                                            |
+| line_user_id                                          | → null                                                                                            |
+| 報修地點若含個人地址                                  | → 路段層級保留，門牌移除（Phase 1 為 free text，無法自動處理；先全清為 `(已匿名)`，Phase 2 改進） |
+| 媒體                                                  | 從 Dropbox 刪除，case_media 紀錄刪除                                                              |
+| 案件編號、案件類型、立案/結案時間、處理時長、公司名稱 | 保留                                                                                              |
 
 #### 6.3.2 audit_log 跨表真匿名化（ADR-0133 方案 A）
 
 reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反憲法法庭 [111 年憲判字第 13 號](https://cons.judicial.gov.tw/docdata.aspx?fid=38&id=309956) 健保案立場（「代碼化措施僅大幅降低侵害非完全消滅」）+ NIST SP 800-188 真匿名化標準（保留 user_id surrogate key = pseudonymization 而非 anonymization）。
 
-| 欄位 | 處理方式 |
-|---|---|
-| `who` (uuid) | → 替換為固定常數 `'00000000-0000-0000-0000-ffffffffffff'`（reserved sentinel；user 表永遠無此 row） |
-| `target` (jsonb) — `reporter_name`/`reporter_phone`/`reporter_email`/`line_user_id` 等 PII key | → `(已匿名)` 或刪除 key |
-| `before` / `after` (jsonb) — 同前 PII key | → 同上 |
-| `ip_address` | 保留（個資但與 `who` 已切斷映射 → 客觀上難重連）|
-| `user_agent` | 保留 |
-| `tenant_id` / `request_id` / `when` / `what` / `reason_code` / `reason_note` / `approval_chain` | 保留（無 PII）|
+| 欄位                                                                                            | 處理方式                                                                                            |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `who` (uuid)                                                                                    | → 替換為固定常數 `'00000000-0000-0000-0000-ffffffffffff'`（reserved sentinel；user 表永遠無此 row） |
+| `target` (jsonb) — `reporter_name`/`reporter_phone`/`reporter_email`/`line_user_id` 等 PII key  | → `(已匿名)` 或刪除 key                                                                             |
+| `before` / `after` (jsonb) — 同前 PII key                                                       | → 同上                                                                                              |
+| `ip_address`                                                                                    | 保留（個資但與 `who` 已切斷映射 → 客觀上難重連）                                                    |
+| `user_agent`                                                                                    | 保留                                                                                                |
+| `tenant_id` / `request_id` / `when` / `what` / `reason_code` / `reason_note` / `approval_chain` | 保留（無 PII）                                                                                      |
 
 匿名化動作本身須再寫一筆新 audit_log row（**append-only 紀律不破壞**），`reason_code` = `USER_ANONYMIZED_RETENTION_EXPIRED`（cron 觸發）或 `USER_ANONYMIZED_RIGHTS_REQUEST`（當事人請求觸發），per [ADR-0078](../../adr/0078-change-reason-catalog.md)。
 
 #### 6.3.3 audit_log 整體保留期（ADR-0133 方案 B）
 
-| 規則 | 內容 |
-|---|---|
-| 保留期 | **7 年**（取商業會計法第 38 條 5 年 + 民法第 125 條請求權時效 15 年的整合值） |
-| 到期處理 | **整列刪除**（per 個資法第 11 條第 3 項；非匿名化）|
-| 排程 | 每日 cron 額外執行 `DELETE FROM audit_log WHERE occurred_at < NOW() - INTERVAL '7 years'`（Phase 2 改用 partition + DROP partition）|
-| 法源 | 個資法施行細則第 21 條第 1 款「法令規定保存期限」（援引商業會計法）|
+| 規則     | 內容                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 保留期   | **7 年**（取商業會計法第 38 條 5 年 + 民法第 125 條請求權時效 15 年的整合值）                                                        |
+| 到期處理 | **整列刪除**（per 個資法第 11 條第 3 項；非匿名化）                                                                                  |
+| 排程     | 每日 cron 額外執行 `DELETE FROM audit_log WHERE occurred_at < NOW() - INTERVAL '7 years'`（Phase 2 改用 partition + DROP partition） |
+| 法源     | 個資法施行細則第 21 條第 1 款「法令規定保存期限」（援引商業會計法）                                                                  |
 
 #### 6.3.4 outbox 表處理
 
@@ -404,36 +404,36 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 對應 [ADR-0088](../../adr/0088-reporter-pii-pdpa-handling.md) + [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) 方案 D（憲法法庭 111 憲判字第 13 號創設「資料停止利用權」）。
 
-| 權利 | Phase 1 實作 | 處理時限 |
-|---|---|---|
-| 查詢/閱覽/複製（第 10 條）| LINE OA「我要查詢我的資料」→ 後台同事手動回覆 | 30 日內（必要時延長 30 日，per 第 13 條）|
-| 補充更正 | 同上 | 30 日內 |
-| **停止處理利用**（per 111 憲判字 13）| LINE OA「我要停止利用我的資料」→ 後台同事處理 + 同步 audit_log 跨表真匿名化 | **7 個工作日內** |
-| 刪除 | LINE OA「我要刪除資料」→ 後台同事手動匿名化 + 同步 audit_log 跨表真匿名化（per 6.3.2）| **7 個工作日內** |
-| 後台同事代為處理 | Plan 4 admin UI（Phase 4 ADR-0133 方案 D 落地）| 同上 |
+| 權利                                  | Phase 1 實作                                                                           | 處理時限                                  |
+| ------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------- |
+| 查詢/閱覽/複製（第 10 條）            | LINE OA「我要查詢我的資料」→ 後台同事手動回覆                                          | 30 日內（必要時延長 30 日，per 第 13 條） |
+| 補充更正                              | 同上                                                                                   | 30 日內                                   |
+| **停止處理利用**（per 111 憲判字 13） | LINE OA「我要停止利用我的資料」→ 後台同事處理 + 同步 audit_log 跨表真匿名化            | **7 個工作日內**                          |
+| 刪除                                  | LINE OA「我要刪除資料」→ 後台同事手動匿名化 + 同步 audit_log 跨表真匿名化（per 6.3.2） | **7 個工作日內**                          |
+| 後台同事代為處理                      | Plan 4 admin UI（Phase 4 ADR-0133 方案 D 落地）                                        | 同上                                      |
 
 **重要**：行使「停止利用 / 刪除」權利時，user 表 + audit_log + outbox 三表須同 transaction 處理；audit_log 走 6.3.2 真匿名化（不刪除事件本體；只切斷 actor 識別性）。
 
 ### 6.5 安全維護（施行細則第 12 條）
 
-| 措施 | Phase 1 實作 | Phase 2 規劃 |
-|---|---|---|
-| 傳輸加密 | 全站 HTTPS（Vercel 預設） | — |
-| 儲存加密 | Neon AES-256 at-rest（預設） | — |
-| 密碼雜湊 | Better Auth 內建 scrypt | — |
-| 權限控制 | role-based（staff / admin） | + 敏感欄位 JIT 授權 |
-| 存取紀錄 | **audit_log 全系統 append-only 紀錄狀態變更**（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) 13 必填欄位）；case_status_history（per Plan 6 高頻查詢視圖）；query_attempts（LINE OA 查詢嘗試）；保留 7 年 + 真匿名化 per [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) | + 敏感欄位查看 audit；JIT 授權紀錄 |
-| 客戶查詢驗證 | LINE OA 查詢需「報修編號 + 手機末四碼」雙重驗證 + rate limiting + 異常告警 | + 客戶端 LINE Login OAuth 取代 |
-| 資料外洩通報 | 內部 SOP 文件（24h 內部通報、72h 通知當事人） | — |
+| 措施         | Phase 1 實作                                                                                                                                                                                                                                                                                                                                                                | Phase 2 規劃                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 傳輸加密     | 全站 HTTPS（Vercel 預設）                                                                                                                                                                                                                                                                                                                                                   | —                                  |
+| 儲存加密     | Neon AES-256 at-rest（預設）                                                                                                                                                                                                                                                                                                                                                | —                                  |
+| 密碼雜湊     | Better Auth 內建 scrypt                                                                                                                                                                                                                                                                                                                                                     | —                                  |
+| 權限控制     | role-based（staff / admin）                                                                                                                                                                                                                                                                                                                                                 | + 敏感欄位 JIT 授權                |
+| 存取紀錄     | **audit_log 全系統 append-only 紀錄狀態變更**（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) 13 必填欄位）；case_status_history（per Plan 6 高頻查詢視圖）；query_attempts（LINE OA 查詢嘗試）；保留 7 年 + 真匿名化 per [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) | + 敏感欄位查看 audit；JIT 授權紀錄 |
+| 客戶查詢驗證 | LINE OA 查詢需「報修編號 + 手機末四碼」雙重驗證 + rate limiting + 異常告警                                                                                                                                                                                                                                                                                                  | + 客戶端 LINE Login OAuth 取代     |
+| 資料外洩通報 | 內部 SOP 文件（24h 內部通報、72h 通知當事人）                                                                                                                                                                                                                                                                                                                               | —                                  |
 
 ### 6.6 委外處理（第 8 條第 7 項）
 
-| Sub-processor | 服務 | 所在地 | DPA |
-|---|---|---|---|
-| Vercel | hosting / functions | 美國 / 全球 | Vercel Data Processing Agreement（標準條款） |
-| Neon | Postgres | 配置時選定 region | Neon DPA |
-| Dropbox | media storage | 美國 | Dropbox DPA |
-| LINE | messaging | 日本 | LINE 服務條款 |
+| Sub-processor | 服務                | 所在地            | DPA                                          |
+| ------------- | ------------------- | ----------------- | -------------------------------------------- |
+| Vercel        | hosting / functions | 美國 / 全球       | Vercel Data Processing Agreement（標準條款） |
+| Neon          | Postgres            | 配置時選定 region | Neon DPA                                     |
+| Dropbox       | media storage       | 美國              | Dropbox DPA                                  |
+| LINE          | messaging           | 日本              | LINE 服務條款                                |
 
 > Plan 階段確認每家是否需要單獨簽署 DPA 或其標準條款已足夠。
 
@@ -450,11 +450,11 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 #### 6.7.2 機密歸屬清單
 
-| 類別 | 範例 | 存放位置 | F12 可見？ |
-|---|---|---|---|
-| 伺服器機密 | DB 密碼、LINE Channel Secret、Dropbox refresh token、OAuth client_secret、Better Auth secret (`BETTER_AUTH_SECRET`)、Webhook 簽章 | Vercel env（**無** `NEXT_PUBLIC_` 前綴）；只在 API Route / Server Component / Server Action 使用 | ❌ 絕不可見 |
-| 公開識別碼 | LINE Login `client_id`、Google `client_id`、LIFF ID | Vercel env（可加 `NEXT_PUBLIC_` 前綴），或寫死於前端 | ✅ 設計上即可見；安全靠 redirect URI 白名單 |
-| 使用者畫面上的資料 | 報修人姓名/手機/Email 等 | Postgres → API → 前端 | ✅ 對「有權限的本人」可見；無權限者打 API 直接被拒 |
+| 類別               | 範例                                                                                                                              | 存放位置                                                                                         | F12 可見？                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| 伺服器機密         | DB 密碼、LINE Channel Secret、Dropbox refresh token、OAuth client_secret、Better Auth secret (`BETTER_AUTH_SECRET`)、Webhook 簽章 | Vercel env（**無** `NEXT_PUBLIC_` 前綴）；只在 API Route / Server Component / Server Action 使用 | ❌ 絕不可見                                        |
+| 公開識別碼         | LINE Login `client_id`、Google `client_id`、LIFF ID                                                                               | Vercel env（可加 `NEXT_PUBLIC_` 前綴），或寫死於前端                                             | ✅ 設計上即可見；安全靠 redirect URI 白名單        |
+| 使用者畫面上的資料 | 報修人姓名/手機/Email 等                                                                                                          | Postgres → API → 前端                                                                            | ✅ 對「有權限的本人」可見；無權限者打 API 直接被拒 |
 
 #### 6.7.3 認證 Cookie 設定
 
@@ -474,18 +474,18 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 **Hook 設計（兩道）**：
 
-| Hook event | 觸發時機 | exit 2 行為 | 用途 |
-|---|---|---|---|
-| `PostToolUse` matcher=`Task` | code-reviewer 等 subagent 結束後 | ❌ **不擋**，但 stderr 內容會回饋給主代理 → Claude 看到問題會自行修正 | 第一次預警，鼓勵自主修復 |
-| `Stop` | 主代理打算結束對話前 | ✅ **真正擋**（官方原文：「Prevents Claude from stopping, continues the conversation」） | 最終放行閘；不過就不准結束 |
+| Hook event                   | 觸發時機                         | exit 2 行為                                                                              | 用途                       |
+| ---------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------- |
+| `PostToolUse` matcher=`Task` | code-reviewer 等 subagent 結束後 | ❌ **不擋**，但 stderr 內容會回饋給主代理 → Claude 看到問題會自行修正                    | 第一次預警，鼓勵自主修復   |
+| `Stop`                       | 主代理打算結束對話前             | ✅ **真正擋**（官方原文：「Prevents Claude from stopping, continues the conversation」） | 最終放行閘；不過就不准結束 |
 
 **Exit code 規則（已 fetch Claude Code Hooks 官方文件 2026-05-08 驗證）**：
 
-| Exit Code | 行為 | stdout | stderr |
-|---|---|---|---|
-| `0` | 成功；不擋 | 解析為 JSON（可選用結構化控制） | 忽略 |
-| `2` | 阻止錯誤（blocking error） | **完全忽略**（即使印 JSON） | 回傳給 Claude 當錯誤訊息 |
-| 其他（含 `1`） | 非阻止錯誤 | 忽略 | 第一行顯示於 transcript，全文進 debug log |
+| Exit Code      | 行為                       | stdout                          | stderr                                    |
+| -------------- | -------------------------- | ------------------------------- | ----------------------------------------- |
+| `0`            | 成功；不擋                 | 解析為 JSON（可選用結構化控制） | 忽略                                      |
+| `2`            | 阻止錯誤（blocking error） | **完全忽略**（即使印 JSON）     | 回傳給 Claude 當錯誤訊息                  |
+| 其他（含 `1`） | 非阻止錯誤                 | 忽略                            | 第一行顯示於 transcript，全文進 debug log |
 
 > ⚠️ **常見地雷**：`exit 1` **不會擋**。要強制執行 policy 必須用 `exit 2`。
 > ⚠️ exit code 與 JSON **不可混用**：JSON 只在 `exit 0` 時被解析。
@@ -504,16 +504,17 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 **工具鏈**：
 
-| 角色 | 工具 |
-|---|---|
-| Hook 管理 | Husky https://typicode.github.io/husky/ |
-| 只跑 staged 檔案 | lint-staged |
-| Secret 偵測 | gitleaks https://github.com/gitleaks/gitleaks |
-| 型別檢查 | `tsc --noEmit` |
-| Lint | ESLint（含自訂 rule） |
-| 格式 | Prettier |
+| 角色             | 工具                                          |
+| ---------------- | --------------------------------------------- |
+| Hook 管理        | Husky https://typicode.github.io/husky/       |
+| 只跑 staged 檔案 | lint-staged                                   |
+| Secret 偵測      | gitleaks https://github.com/gitleaks/gitleaks |
+| 型別檢查         | `tsc --noEmit`                                |
+| Lint             | ESLint（含自訂 rule）                         |
+| 格式             | Prettier                                      |
 
 **自訂 ESLint 規則（重點）**：
+
 - 禁止 `process.env.NEXT_PUBLIC_*` 名稱中含 `SECRET` / `KEY` / `TOKEN` / `PASSWORD`
 - 禁止 hardcoded 字串符合常見 secret pattern（API key 開頭、JWT 結構等）
 - 禁止 `console.log(process.env...)` 式的洩漏
@@ -532,17 +533,18 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 **Workflow jobs**：
 
-| Job 名稱 | 內容 | 失敗即 block merge |
-|---|---|---|
-| `secrets-scan` | `gitleaks detect --source . --redact`（全 history 掃） | ✅ |
-| `lint-and-types` | `pnpm lint && pnpm typecheck` | ✅ |
-| `unit-and-e2e-tests` | Playwright（含單元測試與 happy-path 紅隊；統一一套框架，不引入 Vitest） | ✅ |
-| `bundle-scan` | `next build` 後 grep `.next/static/**` 不含任何 secret pattern | ✅ |
-| `semgrep` | OWASP top 10 規則集 | ✅ |
+| Job 名稱             | 內容                                                                    | 失敗即 block merge |
+| -------------------- | ----------------------------------------------------------------------- | ------------------ |
+| `secrets-scan`       | `gitleaks detect --source . --redact`（全 history 掃）                  | ✅                 |
+| `lint-and-types`     | `pnpm lint && pnpm typecheck`                                           | ✅                 |
+| `unit-and-e2e-tests` | Playwright（含單元測試與 happy-path 紅隊；統一一套框架，不引入 Vitest） | ✅                 |
+| `bundle-scan`        | `next build` 後 grep `.next/static/**` 不含任何 secret pattern          | ✅                 |
+| `semgrep`            | OWASP top 10 規則集                                                     | ✅                 |
 
 **強制機制**：在 GitHub repo Settings → Branch Protection 把上述 jobs 設為 **required status checks**，未通過者**禁止 merge 到 `main`**。
 
 **來源**：
+
 - GitHub Actions https://docs.github.com/en/actions
 - GitHub Branch Protection https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
 - semgrep https://semgrep.dev/
@@ -559,15 +561,15 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 每層都至少包含這些檢查（依該層性能取捨深度）：
 
-| 檢查項 | 工具 | 對應的硬性條款 |
-|---|---|---|
-| commit / 暫存中含 secret | gitleaks | 6.7.1 |
-| `NEXT_PUBLIC_*_SECRET / *_KEY / *_TOKEN` | 自訂 ESLint rule | 6.7.1 |
-| client bundle 含 secret pattern | 自訂 grep script | 6.7.1, 6.7.5 |
-| `BETTER_AUTH_SECRET / NEXTAUTH_SECRET / AUTH_SECRET` 等 env 名稱 + 32+ 字元值誤入 commit / bundle | gitleaks 自訂 rule + bundle scan regex | 6.7.1 |
-| 直接從前端呼叫第三方 API | 自訂 ESLint rule（禁 import `@line/bot-sdk` 於 `'use client'` 檔案等） | 6.7.5 |
-| Cookie 設定缺 `HttpOnly` | grep + 設定檔檢查 | 6.7.3 |
-| 通用安全 anti-pattern | semgrep OWASP rule pack | 6.7.x 全段 |
+| 檢查項                                                                                            | 工具                                                                   | 對應的硬性條款 |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------- |
+| commit / 暫存中含 secret                                                                          | gitleaks                                                               | 6.7.1          |
+| `NEXT_PUBLIC_*_SECRET / *_KEY / *_TOKEN`                                                          | 自訂 ESLint rule                                                       | 6.7.1          |
+| client bundle 含 secret pattern                                                                   | 自訂 grep script                                                       | 6.7.1, 6.7.5   |
+| `BETTER_AUTH_SECRET / NEXTAUTH_SECRET / AUTH_SECRET` 等 env 名稱 + 32+ 字元值誤入 commit / bundle | gitleaks 自訂 rule + bundle scan regex                                 | 6.7.1          |
+| 直接從前端呼叫第三方 API                                                                          | 自訂 ESLint rule（禁 import `@line/bot-sdk` 於 `'use client'` 檔案等） | 6.7.5          |
+| Cookie 設定缺 `HttpOnly`                                                                          | grep + 設定檔檢查                                                      | 6.7.3          |
+| 通用安全 anti-pattern                                                                             | semgrep OWASP rule pack                                                | 6.7.x 全段     |
 
 ---
 
@@ -589,7 +591,7 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 - [ ] 撰寫 `scripts/post-review-scan.sh`（L1、L2、L4 共用）
 - [ ] `.claude/settings.json` 設定 `Stop` + `PostToolUse(matcher=Task)` 兩個 hook
 - [ ] 安裝 Husky + lint-staged，掛 pre-commit
-- [ ] 自訂 ESLint plugin（NEXT_PUBLIC_*_SECRET 偵測 + 前端禁 import 第三方 SDK 規則）
+- [ ] 自訂 ESLint plugin（NEXT*PUBLIC*\*\_SECRET 偵測 + 前端禁 import 第三方 SDK 規則）
 - [ ] gitleaks 設定檔（`.gitleaks.toml`）含 LINE Channel Secret、Dropbox token、Better Auth secret 的客製 pattern
 - [ ] GitHub Actions workflow `.github/workflows/ci.yml`
 - [ ] GitHub Branch Protection 設 required status checks
@@ -606,6 +608,7 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 #### 6.7.6 違反處理
 
 任何 PR 若違反 6.7.1 ~ 6.7.5：
+
 - CI 自動 fail，禁止 merge
 - code review 階段直接退件
 - 已 commit 的 secret 視同**已外洩**：立即輪替該 secret，再從 git history 清除
@@ -628,27 +631,27 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 ### 7.1 技術棧
 
-| 層 | 技術 |
-|---|---|
-| Framework | Next.js 16 App Router（React 19 stable、Turbopack 預設） |
-| UI | Tailwind CSS + shadcn/ui |
-| 資料庫 | Postgres（Neon via Vercel Marketplace） |
-| ORM | Drizzle |
-| 認證 | Better Auth ^1.6 |
-| LINE | `@line/bot-sdk` + LINE Login OAuth |
-| 媒體 | Dropbox API (App Folder) |
-| Hosting | Vercel Functions（Fluid Compute，Node.js 22 LTS） |
-| 排程 | Vercel Cron Jobs |
-| 設定檔 | `vercel.ts`（取代 `vercel.json`） |
-| 套件管理 | pnpm |
+| 層               | 技術                                                                                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework        | Next.js 16 App Router（React 19 stable、Turbopack 預設）                                                                                                                     |
+| UI               | Tailwind CSS + shadcn/ui                                                                                                                                                     |
+| 資料庫           | Postgres（Neon via Vercel Marketplace）                                                                                                                                      |
+| ORM              | Drizzle                                                                                                                                                                      |
+| 認證             | Better Auth ^1.6                                                                                                                                                             |
+| LINE             | `@line/bot-sdk` + LINE Login OAuth                                                                                                                                           |
+| 媒體             | Dropbox API (App Folder)                                                                                                                                                     |
+| Hosting          | Vercel Functions（Fluid Compute，Node.js 22 LTS）                                                                                                                            |
+| 排程             | Vercel Cron Jobs                                                                                                                                                             |
+| 設定檔           | `vercel.ts`（取代 `vercel.json`）                                                                                                                                            |
+| 套件管理         | pnpm                                                                                                                                                                         |
 | Vercel plan tier | **Pro**（per brainstorm A14、H1；Hobby Free 禁商用 per [Vercel Fair Use Guidelines §Commercial Usage](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage)） |
 
 ### 7.2 環境配置
 
-| 環境 | 觸發 | 域名 | DB | LINE Channel |
-|---|---|---|---|---|
-| Production | `main` 分支 push | `rrms.pro080.com` | Neon main branch | 正式 LINE OA + 正式 LINE Login |
-| Preview/Dev | feature 分支 push、PR | `rrms-dev.pro080.com`（PR 共用此固定預覽網址；Vercel 自動發的 `*.vercel.app` 第一次 deploy 暫用） | Neon dev branch | 測試 LINE OA + 測試 LINE Login |
+| 環境        | 觸發                  | 域名                                                                                              | DB               | LINE Channel                   |
+| ----------- | --------------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------ |
+| Production  | `main` 分支 push      | `rrms.pro080.com`                                                                                 | Neon main branch | 正式 LINE OA + 正式 LINE Login |
+| Preview/Dev | feature 分支 push、PR | `rrms-dev.pro080.com`（PR 共用此固定預覽網址；Vercel 自動發的 `*.vercel.app` 第一次 deploy 暫用） | Neon dev branch  | 測試 LINE OA + 測試 LINE Login |
 
 > Neon 的 branching 功能讓兩環境用同一專案的不同 branch，免費額度足夠。
 
@@ -662,14 +665,14 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 ### 7.4 設定檔範例（`vercel.ts`）
 
 ```ts
-import { type VercelConfig } from '@vercel/config/v1';
+import { type VercelConfig } from "@vercel/config/v1";
 
 export const config: VercelConfig = {
-  framework: 'nextjs',
+  framework: "nextjs",
   crons: [
     {
-      path: '/api/cron/anonymize-expired',
-      schedule: '0 19 * * *', // 03:00 Asia/Taipei
+      path: "/api/cron/anonymize-expired",
+      schedule: "0 19 * * *", // 03:00 Asia/Taipei
     },
   ],
 };
@@ -681,29 +684,29 @@ export const config: VercelConfig = {
 
 > 詳細「click-by-click」步驟在 plan 階段提供（依使用者「外部設定要詳細列步驟」規則）。本節列出需要設定的服務清單。
 
-| 服務 | 用途 | Phase 1 需要的數量 |
-|---|---|---|
-| LINE Developer Console | 申請 Messaging API channel × 2、LINE Login channel × 2 | 4 個 channel |
-| Google Cloud Console | OAuth 2.0 client（管理員 Google 登入）× 2（兩環境各一） | 2 |
-| Dropbox App Console | App + App Folder + refresh token × 2 | 2 |
-| Vercel Marketplace | 安裝 Neon integration | 1 |
-| 域名 DNS | 將 `rrms.pro080.com` CNAME 到 Vercel | 1 |
-| GitHub | Repo 連到 Vercel 觸發部署 | 1 |
+| 服務                   | 用途                                                    | Phase 1 需要的數量 |
+| ---------------------- | ------------------------------------------------------- | ------------------ |
+| LINE Developer Console | 申請 Messaging API channel × 2、LINE Login channel × 2  | 4 個 channel       |
+| Google Cloud Console   | OAuth 2.0 client（管理員 Google 登入）× 2（兩環境各一） | 2                  |
+| Dropbox App Console    | App + App Folder + refresh token × 2                    | 2                  |
+| Vercel Marketplace     | 安裝 Neon integration                                   | 1                  |
+| 域名 DNS               | 將 `rrms.pro080.com` CNAME 到 Vercel                    | 1                  |
+| GitHub                 | Repo 連到 Vercel 觸發部署                               | 1                  |
 
 ---
 
 ## 9. 風險與假設
 
-| 項目 | 假設 / 風險 | 緩解 |
-|---|---|---|
-| LINE Channel 申請週期 | 假設使用者已有公司 LINE OA 或可在 1 週內申請完 | 若無，Phase 1 上線時間延後；可先用個人開發測試 |
-| 域名 DNS 生效時間 | 假設 < 24h | 期間用 Vercel 預設網址測試 |
-| Dropbox App quota | 免費 plan 上限 200,000 API call/month | 若不足，升級或評估搬到 Cloudflare R2 |
-| Neon free tier | 0.5 GB 儲存、3 GB egress/月 | Phase 1 預估遠低於上限；若達上限升級 |
-| LINE Webhook 必須 HTTPS | Vercel 預設給 SSL，符合 | — |
-| LINE OA 查詢被列舉/探測 | 報修編號每日序號可推測 | 雙重驗證（編號 + 手機末四碼）+ rate limiting + 異常告警；最小揭露原則 |
-| Phase 1 不做客戶端登入 | 假設客戶資料已在表單中收齊；不需身份驗證即可建案 | 若有惡意大量送出，Phase 2 加 reCAPTCHA |
-| 個資外洩 | 任何雲端服務都有風險 | 走 6.8 SOP；保險評估在 plan 階段考慮 |
+| 項目                    | 假設 / 風險                                      | 緩解                                                                  |
+| ----------------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
+| LINE Channel 申請週期   | 假設使用者已有公司 LINE OA 或可在 1 週內申請完   | 若無，Phase 1 上線時間延後；可先用個人開發測試                        |
+| 域名 DNS 生效時間       | 假設 < 24h                                       | 期間用 Vercel 預設網址測試                                            |
+| Dropbox App quota       | 免費 plan 上限 200,000 API call/month            | 若不足，升級或評估搬到 Cloudflare R2                                  |
+| Neon free tier          | 0.5 GB 儲存、3 GB egress/月                      | Phase 1 預估遠低於上限；若達上限升級                                  |
+| LINE Webhook 必須 HTTPS | Vercel 預設給 SSL，符合                          | —                                                                     |
+| LINE OA 查詢被列舉/探測 | 報修編號每日序號可推測                           | 雙重驗證（編號 + 手機末四碼）+ rate limiting + 異常告警；最小揭露原則 |
+| Phase 1 不做客戶端登入  | 假設客戶資料已在表單中收齊；不需身份驗證即可建案 | 若有惡意大量送出，Phase 2 加 reCAPTCHA                                |
+| 個資外洩                | 任何雲端服務都有風險                             | 走 6.8 SOP；保險評估在 plan 階段考慮                                  |
 
 ---
 
@@ -787,13 +790,13 @@ export const config: VercelConfig = {
 
 ## 附錄 B：條文引用來源
 
-| 引用 | 來源 |
-|---|---|
+| 引用                                            | 來源                                                                      |
+| ----------------------------------------------- | ------------------------------------------------------------------------- |
 | 個人資料保護法第 5、8、11、12、19、20、28-31 條 | 全國法規資料庫 https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=I0050021 |
-| 個人資料保護法施行細則第 12 條 | 全國法規資料庫 https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=I0050022 |
-| Vercel Cron Jobs | https://vercel.com/docs/cron-jobs |
-| LINE Login | https://developers.line.biz/en/docs/line-login/ |
-| LINE Messaging API | https://developers.line.biz/en/docs/messaging-api/ |
-| Dropbox API v2 | https://www.dropbox.com/developers/documentation/http/documentation |
-| Neon Security | https://neon.tech/docs/security/security-overview |
-| GDPR Article 4(5) Pseudonymization | https://gdpr-info.eu/art-4-gdpr/ |
+| 個人資料保護法施行細則第 12 條                  | 全國法規資料庫 https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=I0050022 |
+| Vercel Cron Jobs                                | https://vercel.com/docs/cron-jobs                                         |
+| LINE Login                                      | https://developers.line.biz/en/docs/line-login/                           |
+| LINE Messaging API                              | https://developers.line.biz/en/docs/messaging-api/                        |
+| Dropbox API v2                                  | https://www.dropbox.com/developers/documentation/http/documentation       |
+| Neon Security                                   | https://neon.tech/docs/security/security-overview                         |
+| GDPR Article 4(5) Pseudonymization              | https://gdpr-info.eu/art-4-gdpr/                                          |
