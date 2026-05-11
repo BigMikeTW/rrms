@@ -231,3 +231,32 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - Phase 4 修補：採用「真匿名化策略」（ADR-0133）而非舊版「永久保留」說法
 - 4W docstring 完整
 - commit SHA: 356249e
+
+### Task 8: Dependabot CVE 紅隊驗證（local-only，2026-05-11）
+
+**Deviation from plan**：原 plan 要求開 real PR + 等 Dependabot 偵測（24h）；改 local verify only — 紅隊 branch 不推 GitHub，因 Dependabot 只掃 default branch（main），feature branch 不會被偵測；Dependabot 本體驗證留待 Plan 2 PR merge 後 follow-up（24h 內手動觀察 https://github.com/BigMikeTW/rrms/security/dependabot）。
+
+**方法**：
+1. 建臨時 branch `red-team/dependabot-local-verify`（HEAD = `053c3c8`）
+2. `pnpm add lodash@4.17.20`（GHSA-35jh-r3h4-6jhm 等 CVE）
+3. `pnpm audit --audit-level=high --prod`（CI Dependency audit job 同腳本）
+4. `git checkout -- package.json pnpm-lock.yaml` + `git switch feat/plan-2-cross-cutting-security` + `git branch -D red-team/dependabot-local-verify`
+5. `pnpm install --frozen-lockfile` 還原 node_modules
+
+**結果**：
+- exit code: `1`（FAIL，預期）
+- 偵測到 6 vulnerabilities：4 moderate + **2 high**
+- High 等級漏洞（兩條都指向 lodash @ `.>lodash`）：
+  1. **GHSA-35jh-r3h4-6jhm** — Command Injection in lodash（vulnerable `<4.17.21`，patched `>=4.17.21`）
+  2. **GHSA-r5fr-rjxr-66jc** — Code Injection via `_.template`（vulnerable `>=4.0.0 <=4.17.23`，patched `>=4.18.0`）
+
+**還原後 baseline 驗證**：
+- `pnpm audit --audit-level=high --prod` → exit 0，1 moderate（與 Task 3 baseline 一致）
+- `git status`：working tree 只剩 Task 7 遺留的 CRLF/LF 結尾正規化（與 Task 8 無關）
+- `git log -1`：HEAD 仍為 `053c3c8`（Plan 2 branch 對齊）✓
+
+**結論**：
+- ✅ CI `Dependency audit` job 確認可正確擋下 high+ CVE 套件（紅隊驗證通過，exit code 1 + 列出 high CVE）
+- ⏳ Dependabot 本體驗證留待 Plan 2 PR merge 後 24h 內手動觀察 GitHub Security tab
+
+**清理**：紅隊 branch 已刪除；working tree clean（除 Task 7 line-ending diff）；無 production code 變更進入 Plan 2 PR。
