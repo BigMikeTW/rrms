@@ -9,6 +9,7 @@
 **Architecture:** Drizzle 直接匯出 TypeScript schema；Better Auth 走 `drizzleAdapter`；Email/密碼用 `emailAndPassword`（內建 scrypt，無 bcrypt 依賴）；Google 走內建 `socialProviders.google`；LINE Login 走 `genericOAuth` plugin 配 OIDC discovery；session DB token + HttpOnly cookie；proxy（Next.js 16 — `src/proxy.ts`）在 `/admin/*` 強制 auth + role-based 授權（admin plugin）。
 
 **Tech Stack:**
+
 - `drizzle-orm@0.45.2`（exact pin；pre-1.0，禁 caret 以免 schema 漂移）
 - `drizzle-kit@0.31.10`（dev；exact pin，理由同上）
 - `@neondatabase/serverless`（Neon driver，serverless 環境最佳）
@@ -27,13 +28,13 @@
 
 ## Spec 對照
 
-| Spec 章節 | 本計畫覆蓋 |
-|---|---|
-| 4.3 認證（Email/密碼、Google、LINE Login） | Task 8-10 |
-| 5.1 user / 5.2 cases / 5.3 case_status_history / 5.4 case_media / 5.5 line_bindings / 5.6 consent_versions / 5.7 query_attempts | Task 3-5 |
-| 6.7.3 認證 Cookie 設定 | Task 7 + Task 11 |
-| 6.7.4 安全維護：scrypt 密碼雜湊（Better Auth 內建）、role-based 權限控制 | Task 8 + Task 14 |
-| 攻擊測試 Cookie HttpOnly / Auth 權限隔離 / CSRF（SameSite） | Task 14 |
+| Spec 章節                                                                                                                       | 本計畫覆蓋       |
+| ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| 4.3 認證（Email/密碼、Google、LINE Login）                                                                                      | Task 8-10        |
+| 5.1 user / 5.2 cases / 5.3 case_status_history / 5.4 case_media / 5.5 line_bindings / 5.6 consent_versions / 5.7 query_attempts | Task 3-5         |
+| 6.7.3 認證 Cookie 設定                                                                                                          | Task 7 + Task 11 |
+| 6.7.4 安全維護：scrypt 密碼雜湊（Better Auth 內建）、role-based 權限控制                                                        | Task 8 + Task 14 |
+| 攻擊測試 Cookie HttpOnly / Auth 權限隔離 / CSRF（SameSite）                                                                     | Task 14          |
 
 ---
 
@@ -93,23 +94,23 @@ __tests__/
 
 - [ ] **Step 1：fetch 各官方文件**
 
-| 技術 | URL |
-|---|---|
-| Drizzle ORM with Neon | https://orm.drizzle.team/docs/get-started-postgresql#neon |
-| drizzle-kit migrations | https://orm.drizzle.team/kit-docs/overview |
-| Better Auth Introduction | https://www.better-auth.com/docs/introduction |
-| Better Auth Installation (Next.js) | https://www.better-auth.com/docs/installation |
-| Better Auth Drizzle Adapter | https://www.better-auth.com/docs/adapters/drizzle |
-| Better Auth Email & Password | https://www.better-auth.com/docs/authentication/email-password |
-| Better Auth Google Provider | https://www.better-auth.com/docs/authentication/google |
-| Better Auth Generic OAuth Plugin (for LINE) | https://www.better-auth.com/docs/plugins/generic-oauth |
-| Better Auth Magic Link Plugin | https://www.better-auth.com/docs/plugins/magic-link |
-| Better Auth Admin Plugin | https://www.better-auth.com/docs/plugins/admin |
-| Better Auth Session Management | https://www.better-auth.com/docs/concepts/session-management |
-| Better Auth Database Schema | https://www.better-auth.com/docs/concepts/database |
-| LINE Login OIDC Discovery | https://access.line.me/.well-known/openid-configuration |
-| LINE Login OAuth 2.0 | https://developers.line.biz/en/docs/line-login/integrate-line-login/ |
-| Vercel Marketplace Neon | https://vercel.com/marketplace/neon |
+| 技術                                        | URL                                                                  |
+| ------------------------------------------- | -------------------------------------------------------------------- |
+| Drizzle ORM with Neon                       | https://orm.drizzle.team/docs/get-started-postgresql#neon            |
+| drizzle-kit migrations                      | https://orm.drizzle.team/kit-docs/overview                           |
+| Better Auth Introduction                    | https://www.better-auth.com/docs/introduction                        |
+| Better Auth Installation (Next.js)          | https://www.better-auth.com/docs/installation                        |
+| Better Auth Drizzle Adapter                 | https://www.better-auth.com/docs/adapters/drizzle                    |
+| Better Auth Email & Password                | https://www.better-auth.com/docs/authentication/email-password       |
+| Better Auth Google Provider                 | https://www.better-auth.com/docs/authentication/google               |
+| Better Auth Generic OAuth Plugin (for LINE) | https://www.better-auth.com/docs/plugins/generic-oauth               |
+| Better Auth Magic Link Plugin               | https://www.better-auth.com/docs/plugins/magic-link                  |
+| Better Auth Admin Plugin                    | https://www.better-auth.com/docs/plugins/admin                       |
+| Better Auth Session Management              | https://www.better-auth.com/docs/concepts/session-management         |
+| Better Auth Database Schema                 | https://www.better-auth.com/docs/concepts/database                   |
+| LINE Login OIDC Discovery                   | https://access.line.me/.well-known/openid-configuration              |
+| LINE Login OAuth 2.0                        | https://developers.line.biz/en/docs/line-login/integrate-line-login/ |
+| Vercel Marketplace Neon                     | https://vercel.com/marketplace/neon                                  |
 
 - [ ] **Step 2：寫 research 報告 `docs/superpowers/research/2026-05-08-db-auth-versions.md`**（必含 Better Auth 與 Auth.js 維護權移轉的引用）
 - [ ] **Step 3：報告給使用者，等「OK 繼續」**
@@ -131,6 +132,7 @@ __tests__/
 8. 按 `Create`
 
 完成後 Vercel 會**自動把 Neon 環境變數注入 RRMS 專案**：
+
 - `DATABASE_URL`
 - `DATABASE_URL_UNPOOLED`
 - `POSTGRES_URL`
@@ -513,6 +515,7 @@ git commit -m "feat(db): define Drizzle schema for RRMS 6 + Better Auth 4 tables
 ```powershell
 pnpm db:generate
 ```
+
 預期：在 `drizzle/` 目錄產生 `0000_*.sql` 與 `meta/_journal.json`。
 
 - [ ] **Step 3：套用到 Neon**
@@ -520,6 +523,7 @@ pnpm db:generate
 ```powershell
 pnpm db:push
 ```
+
 互動式 confirm 後，Neon DB 內會建出 10 張表（RRMS 6 + Better Auth 4；原本的 invitations 表已被 Better Auth 的 verification 表吸收）。
 
 - [ ] **Step 4：用 drizzle-kit studio 視覺驗證**
@@ -527,6 +531,7 @@ pnpm db:push
 ```powershell
 pnpm db:studio
 ```
+
 瀏覽器開 https://local.drizzle.studio，確認看到 `user` / `session` / `account` / `verification` / `cases` / `case_status_history` / `case_media` / `line_bindings` / `consent_versions` / `query_attempts` 共 10 張表（注意：是 10 張，不是 11，因為 `invitations` 已被 `verification` 取代）。
 
 - [ ] **Step 5：commit**
@@ -556,12 +561,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
 複製輸出值，貼進 `.env.local`：
+
 ```
 BETTER_AUTH_SECRET=<剛才產生的值>
 BETTER_AUTH_URL=http://localhost:3000
 ```
 
 也用 Vercel CLI 推到 Vercel：
+
 ```powershell
 vercel env add BETTER_AUTH_SECRET production
 vercel env add BETTER_AUTH_SECRET preview
@@ -860,6 +867,7 @@ vercel env add GOOGLE_CLIENT_SECRET
 ```
 
 `.env.local` 也加：
+
 ```
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
@@ -955,6 +963,7 @@ git commit -m "feat(auth): add LINE Login via genericOAuth plugin"
 ## Task 11: Cookie 安全強化已含於 Task 7
 
 Task 7 Step 3 的 `advanced.cookies.session_token.attributes` 已套：
+
 - `httpOnly: true`
 - `sameSite: "lax"`
 - `secure: production-only true`
@@ -969,6 +978,7 @@ Task 7 Step 3 的 `advanced.cookies.session_token.attributes` 已套：
 ## Task 12: Admin 邀請 + 啟用流程（magicLink + admin plugin）
 
 > **流程設計：**
+>
 > 1. Admin 在 `/admin/users` 填同事 email + role，按「邀請」。
 > 2. server action 呼叫 `auth.api.signInMagicLink({ email, ..., metadata: { role, invitedBy }})`。
 > 3. magicLink plugin 產 token、寫進 `verification` 表、call 我們提供的 `sendMagicLink(email, url, ...)` callback。
@@ -1039,7 +1049,11 @@ export async function inviteUser(formData: FormData) {
   // The plugin doesn't return the URL itself; for Phase 1 we read it from
   // the latest verification row to surface it back to the inviting admin.
   // (Plan 8 will replace this with Resend email and remove this affordance.)
-  return { ok: result.status, hint: `已發送邀請至 ${email}（請查 server log 取得連結）`, role };
+  return {
+    ok: result.status,
+    hint: `已發送邀請至 ${email}（請查 server log 取得連結）`,
+    role,
+  };
 }
 ```
 
@@ -1101,9 +1115,7 @@ export default async function AdminLayout({
       <header className="border-b p-4">
         <nav className="flex gap-4">
           <a href="/admin">Dashboard</a>
-          {session.user.role === "admin" && (
-            <a href="/admin/users">帳號管理</a>
-          )}
+          {session.user.role === "admin" && <a href="/admin/users">帳號管理</a>}
           <a href="/api/auth/sign-out" className="ml-auto">
             登出（{session.user.email}）
           </a>
@@ -1262,10 +1274,12 @@ main();
 ```
 
 執行（使用者操作；本次性）：
+
 ```powershell
 $env:SEED_ADMIN_EMAIL="<你的email>"; $env:SEED_ADMIN_PASSWORD="<暫時密碼>"
 pnpm tsx scripts/seed-admin.ts
 ```
+
 裝 tsx：`pnpm add -D tsx`
 
 - [ ] **Step 5：手動驗證登入流程**
@@ -1400,6 +1414,7 @@ test("anonymous request to admin server action is rejected", async ({
 ```powershell
 pnpm exec playwright test
 ```
+
 預期：兩個測試 PASS。
 
 - [ ] **Step 6：commit**
@@ -1441,6 +1456,7 @@ git commit -m "test(security): red-team auth — cookie HttpOnly + privilege esc
 > **Plan 3 implementer 注意執行順序**：原 Task 1-14 跑完後，再依本段新 Task 順序執行；新 Task 之間有依賴關係，不可跳過。
 
 ### 對應 ADR
+
 - [ADR-0017](../../adr/0017-multitenancy-pool-rls.md) Multi-tenant Pool + RLS
 - [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) audit_log append-only（Phase 4 已 amend：retention 7 年 + 跨表真匿名化）
 - [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) audit_log 13 必填欄位（Phase 4 已 amend：補 tenant_id + request_id）
@@ -1458,37 +1474,50 @@ git commit -m "test(security): red-team auth — cookie HttpOnly + privilege esc
 **對應**：ADR-0076 + ADR-0077（13 欄位）+ ADR-0133（append-only enforcement）
 
 **Files:**
+
 - Modify: `src/db/schema.ts`（加 `audit_log` 表 13 欄位）
 - Create: `drizzle/migrations/0001_audit_log_append_only.sql`（trigger + REVOKE — raw SQL，不走 Drizzle generate）
 
 **Schema (Drizzle)**:
+
 ```ts
-export const auditLog = pgTable('audit_log', {
-  id:            uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-  tenantId:      uuid('tenant_id').notNull(),                         // ADR-0017
-  requestId:     uuid('request_id').notNull(),                        // OpenTelemetry correlation
-  who:           uuid('who').notNull(),                               // actor user_id; ADR-0133 真匿名化處理
-  occurredAt:    timestamp('occurred_at', { withTimezone: true })
-                   .notNull().defaultNow(),
-  what:          text('what').notNull(),                              // event type, e.g. 'CASE_STATUS_CHANGED'
-  resourceType:  text('resource_type').notNull(),                     // 'case' | 'media' | 'consent' | 'user' …
-  resourceId:    uuid('resource_id').notNull(),
-  before:        jsonb('before'),                                      // null on INSERT; PII redacted
-  after:         jsonb('after'),                                       // null on DELETE; PII redacted
-  reasonCode:    text('reason_code').notNull(),                        // FK to change_reason_catalog
-  reasonNote:    text('reason_note'),
-  approvalChain: jsonb('approval_chain'),                              // 高敏感事件
-  ipAddress:     inet('ip_address'),
-  userAgent:     text('user_agent'),
-}, (t) => ({
-  tenantIdx:    index('audit_log_tenant_idx').on(t.tenantId, t.occurredAt),
-  resourceIdx:  index('audit_log_resource_idx').on(t.resourceType, t.resourceId),
-  requestIdx:   index('audit_log_request_idx').on(t.requestId),
-  whoIdx:       index('audit_log_who_idx').on(t.who, t.occurredAt),
-}));
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(), // ADR-0017
+    requestId: uuid("request_id").notNull(), // OpenTelemetry correlation
+    who: uuid("who").notNull(), // actor user_id; ADR-0133 真匿名化處理
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    what: text("what").notNull(), // event type, e.g. 'CASE_STATUS_CHANGED'
+    resourceType: text("resource_type").notNull(), // 'case' | 'media' | 'consent' | 'user' …
+    resourceId: uuid("resource_id").notNull(),
+    before: jsonb("before"), // null on INSERT; PII redacted
+    after: jsonb("after"), // null on DELETE; PII redacted
+    reasonCode: text("reason_code").notNull(), // FK to change_reason_catalog
+    reasonNote: text("reason_note"),
+    approvalChain: jsonb("approval_chain"), // 高敏感事件
+    ipAddress: inet("ip_address"),
+    userAgent: text("user_agent"),
+  },
+  (t) => ({
+    tenantIdx: index("audit_log_tenant_idx").on(t.tenantId, t.occurredAt),
+    resourceIdx: index("audit_log_resource_idx").on(
+      t.resourceType,
+      t.resourceId,
+    ),
+    requestIdx: index("audit_log_request_idx").on(t.requestId),
+    whoIdx: index("audit_log_who_idx").on(t.who, t.occurredAt),
+  }),
+);
 ```
 
 **Migration SQL（raw — drizzle generate 不會產 trigger）**:
+
 ```sql
 -- 1. Append-only trigger — 第二道防線（trap superuser via application path）
 CREATE OR REPLACE FUNCTION audit_log_block_modify()
@@ -1508,6 +1537,7 @@ GRANT  INSERT, SELECT ON audit_log TO rrms_app;
 ```
 
 **驗收**：
+
 - [ ] schema.ts 加表後 `pnpm exec drizzle-kit generate` 產出 SQL 含 `CREATE TABLE audit_log`
 - [ ] 手動建立 `0001_audit_log_append_only.sql`（drizzle generate 不會產 trigger / REVOKE，必須手寫）
 - [ ] `pnpm exec drizzle-kit migrate` 跑通
@@ -1520,20 +1550,25 @@ GRANT  INSERT, SELECT ON audit_log TO rrms_app;
 **對應**：ADR-0078（per Phase 4 amend 加兩個匿名化 reason）
 
 **Files:**
+
 - Modify: `src/db/schema.ts`（加 `change_reason_catalog` 表）
 - Create: `scripts/seed-change-reasons.ts`
 
 **Schema**:
+
 ```ts
-export const changeReasonCatalog = pgTable('change_reason_catalog', {
-  code:        text('code').primaryKey(),         // e.g. 'NODE_ARCHIVED_DUPLICATE'
-  description: text('description').notNull(),
-  category:    text('category').notNull(),        // 'node' | 'contract' | 'case' | 'user'
-  createdAt:   timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+export const changeReasonCatalog = pgTable("change_reason_catalog", {
+  code: text("code").primaryKey(), // e.g. 'NODE_ARCHIVED_DUPLICATE'
+  description: text("description").notNull(),
+  category: text("category").notNull(), // 'node' | 'contract' | 'case' | 'user'
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 ```
 
 **Phase 1 seed (per ADR-0078 amended)**:
+
 - `NODE_ARCHIVED_DUPLICATE`、`NODE_ARCHIVED_TENANT_LEFT`、`NODE_ARCHIVED_REORG`
 - `CONTRACT_TERMINATED_EXPIRED`、`CONTRACT_TERMINATED_DEFAULT`
 - `RATE_CARD_UPDATE`、`POST_RESOLUTION_ADJUSTMENT`、`DISPUTED_RESOLUTION`
@@ -1548,28 +1583,45 @@ export const changeReasonCatalog = pgTable('change_reason_catalog', {
 **對應**：Round-2 確認 Vercel + Neon serverless 不適合 LISTEN/NOTIFY（Neon 官方明文 + Vercel function 無常駐 listener）；改 Outbox + Vercel Cron poll。
 
 **Schema**:
+
 ```ts
-export const outbox = pgTable('outbox', {
-  id:              uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-  tenantId:        uuid('tenant_id').notNull(),
-  aggregateType:   text('aggregate_type').notNull(),         // 'RepairRequest', 'User', etc.
-  aggregateId:     uuid('aggregate_id').notNull(),
-  eventType:       text('event_type').notNull(),             // 'RepairRequest.Created'
-  eventVersion:    smallint('event_version').notNull().default(1),
-  payload:         jsonb('payload').notNull(),
-  metadata:        jsonb('metadata').notNull().default(sql`'{}'::jsonb`),
-  status:          text('status').notNull().default('pending'),   // 'pending' | 'dispatching' | 'published' | 'failed' | 'dead_letter'
-  attempts:        smallint('attempts').notNull().default(0),
-  maxAttempts:     smallint('max_attempts').notNull().default(8),
-  nextAttemptAt:   timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
-  lastError:       text('last_error'),
-  createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  publishedAt:     timestamp('published_at', { withTimezone: true }),
-  idempotencyKey:  text('idempotency_key').notNull().unique(),
-}, (t) => ({
-  pendingIdx:    index('outbox_pending_idx').on(t.nextAttemptAt, t.createdAt),
-  aggregateIdx:  index('outbox_aggregate_idx').on(t.aggregateType, t.aggregateId, t.createdAt),
-}));
+export const outbox = pgTable(
+  "outbox",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull(),
+    aggregateType: text("aggregate_type").notNull(), // 'RepairRequest', 'User', etc.
+    aggregateId: uuid("aggregate_id").notNull(),
+    eventType: text("event_type").notNull(), // 'RepairRequest.Created'
+    eventVersion: smallint("event_version").notNull().default(1),
+    payload: jsonb("payload").notNull(),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    status: text("status").notNull().default("pending"), // 'pending' | 'dispatching' | 'published' | 'failed' | 'dead_letter'
+    attempts: smallint("attempts").notNull().default(0),
+    maxAttempts: smallint("max_attempts").notNull().default(8),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+  },
+  (t) => ({
+    pendingIdx: index("outbox_pending_idx").on(t.nextAttemptAt, t.createdAt),
+    aggregateIdx: index("outbox_aggregate_idx").on(
+      t.aggregateType,
+      t.aggregateId,
+      t.createdAt,
+    ),
+  }),
+);
 ```
 
 CHECK constraint via raw SQL migration: `CHECK (status IN ('pending','dispatching','published','failed','dead_letter'))`。
@@ -1603,20 +1655,25 @@ tenantId: uuid('tenant_id').notNull().default('00000000-0000-0000-0000-000000000
 
 ```ts
 // 範例 — cases 表
-export const cases = pgTable('cases', {
-  // ... 既有欄位 + tenantId
-}, (t) => ({
-  // pgPolicy declare（Phase 2 才 ALTER TABLE ... ENABLE ROW LEVEL SECURITY）
-  tenantIsolation: pgPolicy('cases_tenant_isolation', {
-    as: 'permissive',
-    for: 'all',
-    to: 'rrms_app',
-    using: sql`${t.tenantId} = current_setting('app.tenant_id')::uuid`,
+export const cases = pgTable(
+  "cases",
+  {
+    // ... 既有欄位 + tenantId
+  },
+  (t) => ({
+    // pgPolicy declare（Phase 2 才 ALTER TABLE ... ENABLE ROW LEVEL SECURITY）
+    tenantIsolation: pgPolicy("cases_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "rrms_app",
+      using: sql`${t.tenantId} = current_setting('app.tenant_id')::uuid`,
+    }),
   }),
-}));
+);
 ```
 
 **Phase 2 啟用時**用 raw SQL migration（避開 Drizzle pgPolicy bug #3504/#4407/#4198/#3495）：
+
 ```sql
 ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cases FORCE ROW LEVEL SECURITY;  -- 連 owner 也擋（per Bytebase footgun #8）
@@ -1629,11 +1686,13 @@ ALTER TABLE cases FORCE ROW LEVEL SECURITY;  -- 連 owner 也擋（per Bytebase 
 **對應**：ADR-0017；Round-2 確認 Next.js 16 v16.0.0 已將舊版 `middleware.ts`（檔案與概念）重新命名為 `proxy.ts`；本專案一律使用 `proxy.ts`，不再用舊名
 
 **Files:**
+
 - Create: `src/proxy.ts`（Phase 1 default tenant；Phase 2 加 subdomain 解析）
 - Create: `src/lib/tenant-context.ts`（server code 讀 header 的 helper）
 - Create: `src/lib/tenant-resolver.ts`（subdomain → tenant_id mapping；Phase 1 純 in-memory）
 
 **proxy.ts 設計**（per Round-2 + Round-3 verification）：
+
 - 解 `req.headers.get('host')` → subdomain
 - `requestHeaders.delete('x-tenant-id')` → 防 client 偽造
 - `requestHeaders.set('x-tenant-id', resolvedTenantId)` → 下游可讀
@@ -1641,6 +1700,7 @@ ALTER TABLE cases FORCE ROW LEVEL SECURITY;  -- 連 owner 也擋（per Bytebase 
 - Phase 2：實際 subdomain → tenant 查表 + Vercel KV / Upstash cache
 
 **tenant-context.ts 設計**：
+
 - 用 React `cache()` 包 `headers().get('x-tenant-id')` — Next.js 官方推薦 RSC pattern（per Round-2 Q4），不用 AsyncLocalStorage（proxy ↔ handler 不通；per GitHub issue #69298）
 - `getCurrentTenantId(): string` — throws if missing
 - `getRepositories(): Repositories` — factory: `makeRepositories(db, tenantId)`
@@ -1654,12 +1714,14 @@ ALTER TABLE cases FORCE ROW LEVEL SECURITY;  -- 連 owner 也擋（per Bytebase 
 **對應**：Round-2 + Round-3：Neon `neondb_owner` 預設 BYPASSRLS（superuser membership），Phase 2 啟用 RLS 時 admin 會繞過 → 必須建 3 個 role
 
 **Files:**
+
 - Create: `drizzle/migrations/0002_setup_roles.sql`（手寫 raw SQL）
 - Modify: `.env.example`（加 `DATABASE_URL_MIGRATION` + `DATABASE_URL_APP` 兩條）
 - Modify: `drizzle.config.ts`（用 `DATABASE_URL_MIGRATION`）
 - Modify: `src/db/client.ts`（用 `DATABASE_URL_APP`）
 
 **SQL**:
+
 ```sql
 -- run as neondb_owner once during Phase 4 deployment
 CREATE ROLE rrms_migration LOGIN PASSWORD '<set via Neon Console or vercel env>'
@@ -1689,26 +1751,28 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 **對應**：ADR-0134 — Round-3 source code 直驗證 Better Auth v1.6.10 的 5 個必修配置
 
 **Files modified:**
+
 - `src/lib/auth.ts`（加 5 個必設項）
 - `package.json`（pin `better-auth@^1.6.10`）
 - `app/api/auth/[...all]/route.ts`（加 magic-link wrapper）
 
 **配置**:
+
 ```ts
 // src/lib/auth.ts
-import { betterAuth } from 'better-auth';
-import { magicLink, admin } from 'better-auth/plugins';
-import { genericOAuth } from 'better-auth/plugins/generic-oauth';
+import { betterAuth } from "better-auth";
+import { magicLink, admin } from "better-auth/plugins";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, { provider: 'pg' }),
+  database: drizzleAdapter(db, { provider: "pg" }),
 
   // ADR-0134 #3: 禁自動 link
   account: {
     accountLinking: {
       enabled: true,
-      trustedProviders: [],          // ← MUST 空陣列；LINE 永遠不入
-      disableImplicitLinking: true,  // ← MUST true
+      trustedProviders: [], // ← MUST 空陣列；LINE 永遠不入
+      disableImplicitLinking: true, // ← MUST true
     },
   },
 
@@ -1716,52 +1780,61 @@ export const auth = betterAuth({
   socialProviders: { google: { clientId, clientSecret } },
 
   plugins: [
-    genericOAuth({                   // LINE Login (per ADR-0132)
-      config: [{
-        providerId: 'line',
-        // 不要 mapProfileToUser 把 emailVerified 強設為 true
-        // ...
-      }],
+    genericOAuth({
+      // LINE Login (per ADR-0132)
+      config: [
+        {
+          providerId: "line",
+          // 不要 mapProfileToUser 把 emailVerified 強設為 true
+          // ...
+        },
+      ],
     }),
 
     magicLink({
-      storeToken: 'hashed',          // ← MUST hashed (ADR-0134 #1)；預設 'plain' 是地雷
-      expiresIn: 60 * 10,            // 10 分鐘 (per ADR-0134 #1 員工友善)
-      allowedAttempts: 1,            // 已是 default
+      storeToken: "hashed", // ← MUST hashed (ADR-0134 #1)；預設 'plain' 是地雷
+      expiresIn: 60 * 10, // 10 分鐘 (per ADR-0134 #1 員工友善)
+      allowedAttempts: 1, // 已是 default
       sendMagicLink: async ({ email, url, token }, ctx) => {
         await rateLimitCheckByEmail(email, { window: 3600, max: 5 }); // ADR-0134 #4
-        const { emailAdapter } = await import('@/adapters/email');
-        await emailAdapter.sendTransactional({ /* ... */ });
+        const { emailAdapter } = await import("@/adapters/email");
+        await emailAdapter.sendTransactional({
+          /* ... */
+        });
       },
     }),
 
-    admin({ /* default 'admin' / 'user' roles */ }),
+    admin({
+      /* default 'admin' / 'user' roles */
+    }),
   ],
 
   // ADR-0134 #6: audit log integration via generic hook
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       const auditEvents: Record<string, string> = {
-        '/sign-in/magic-link': 'AUTH_SIGNIN_MAGICLINK',
-        '/sign-in/email':       'AUTH_SIGNIN_PASSWORD',
-        '/sign-in/social':      'AUTH_SIGNIN_OAUTH',
-        '/sign-out':            'AUTH_SIGNOUT',
-        '/admin/set-role':      'AUTH_ROLE_CHANGED',
-        '/admin/create-user':   'AUTH_USER_CREATED',
+        "/sign-in/magic-link": "AUTH_SIGNIN_MAGICLINK",
+        "/sign-in/email": "AUTH_SIGNIN_PASSWORD",
+        "/sign-in/social": "AUTH_SIGNIN_OAUTH",
+        "/sign-out": "AUTH_SIGNOUT",
+        "/admin/set-role": "AUTH_ROLE_CHANGED",
+        "/admin/create-user": "AUTH_USER_CREATED",
       };
       const event = auditEvents[ctx.path];
       if (!event) return;
       const repos = await getRepositories();
       await repos.auditLog.insert({
-        who: ctx.context.newSession?.user.id ?? '00000000-0000-0000-0000-000000000000',
+        who:
+          ctx.context.newSession?.user.id ??
+          "00000000-0000-0000-0000-000000000000",
         what: event,
-        resourceType: 'auth',
-        resourceId: ctx.context.newSession?.user.id ?? '00000000-...0000',
+        resourceType: "auth",
+        resourceId: ctx.context.newSession?.user.id ?? "00000000-...0000",
         before: null,
         after: { path: ctx.path, body: redactPII(ctx.body) },
-        reasonCode: 'AUTH_FLOW',
-        ipAddress: ctx.headers.get('x-forwarded-for'),
-        userAgent: ctx.headers.get('user-agent'),
+        reasonCode: "AUTH_FLOW",
+        ipAddress: ctx.headers.get("x-forwarded-for"),
+        userAgent: ctx.headers.get("user-agent"),
       });
     }),
   },
@@ -1773,6 +1846,7 @@ export const auth = betterAuth({
 **對應**：ADR-0134 #2 — Round-3 source code 確認 Better Auth 不 invalidate 舊 token
 
 **Files:**
+
 - Create or modify: `app/api/auth/[...all]/route.ts`
 
 包一層 wrapper：當 `POST /sign-in/magic-link` 收到 email，先 DELETE `verification` table 中對應 email 的 pending token，再 forward 給 Better Auth handler。具體 SQL pattern 見 ADR-0134 § Decision #2。
@@ -1782,10 +1856,12 @@ export const auth = betterAuth({
 **對應**：Round-3 確認 Better Auth admin plugin 沒有原生 invite — issue #4216 / #4226 仍 open
 
 **Files:**
+
 - Modify: `src/app/admin/users/actions.ts`（重寫 invite server action）
 - Modify: `src/app/invite/page.tsx`（強制 setup password）
 
 **Flow**:
+
 1. Admin 在後台填新 admin email + 預先指定 role
 2. Server Action 呼叫：
    - `auth.api.createUser({ body: { email, name, role: 'admin', data: { emailVerified: false } } })` — 建 user record（emailVerified=false 故意，等 magicLinkVerify 升級）
@@ -1802,6 +1878,7 @@ export const auth = betterAuth({
 **對應**：ADR-0017 Multi-tenant Level 3 + Round-2 + Round-3 verified pattern
 
 **Files:**
+
 - Create: `src/db/repositories/index.ts`（factory: `makeRepositories(db, tenantId)`）
 - Create: `src/db/repositories/case.repository.ts`
 - Create: `src/db/repositories/case-status-history.repository.ts`
@@ -1815,6 +1892,7 @@ export const auth = betterAuth({
 - Create: `src/db/with-tenant.ts`（transaction wrapper for `set_config('app.tenant_id', ?, TRUE)` — Phase 2 RLS ENABLE 後須用）
 
 **Pattern (per Round-2 Q1 範例)**:
+
 ```ts
 export class CaseRepository {
   constructor(
@@ -1843,6 +1921,7 @@ export class CaseRepository {
 **對應**：Round-2 Q2 設計
 
 **Files:**
+
 - Create: `eslint-rules/no-direct-db-query.mjs`
 - Modify: `eslint.config.mjs`（註冊 rule）
 - Create: `__tests__/__fixtures__/violation-no-direct-db-query.ts`
@@ -1856,6 +1935,7 @@ export class CaseRepository {
 **對應**：Vercel KV 已停售（per Round-2）→ Phase 1 純 in-memory + Fluid Compute warm reuse
 
 **Files:**
+
 - Create: `src/adapters/cache/index.ts`（TenantCachePort）
 - Create: `src/adapters/cache/InMemoryCacheAdapter.ts`（Phase 1 default）
 
@@ -1868,9 +1948,11 @@ export class CaseRepository {
 **對應**：ADR-0017 multi-tenant；Round-2 業界共識「failure modes」中「新表忘記加 RLS」最危險
 
 **Files:**
+
 - Create: `__tests__/integration/cross-tenant-isolation.spec.ts`
 
 **Test scenarios**:
+
 1. 同一帳號 alpha 訪問 `alpha.localhost:3000` 看到 alpha 的 cases；訪 `beta.localhost:3000` 看不到 alpha 的 cases
 2. 直接打 API 帶 `?tenant_id=beta` 也看不到（proxy 設 header 客戶端不能偽造）
 3. 嘗試 SQL injection 繞過 repository 的 `WHERE tenantId = ?` — 應失敗
@@ -1884,6 +1966,7 @@ export class CaseRepository {
 **對應**：Task 6.5 trigger + REVOKE 雙保險
 
 **Test scenarios**:
+
 1. 用 `rrms_app` role 連線：`UPDATE audit_log` → 應 REVOKE 擋下（permission denied）
 2. 用 `rrms_migration` role 連線：`UPDATE audit_log` → 應 trigger 擋下（RAISE EXCEPTION）
 3. 用 `neondb_owner` role 連線：`UPDATE audit_log` → 應 trigger 擋下（trigger 對所有 role 生效）

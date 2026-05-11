@@ -38,30 +38,30 @@ When:  2026-05-10 寫入；預估 4-6 週逐 phase 執行。每 phase 完成後�
 
 完成後系統具備：
 
-| 項目 | 落地形式 |
-|---|---|
-| Hexagonal architecture（brainstorm F7-F11）| `src/adapters/` + 5 個 adapter interface + ESLint 強制 rule |
-| 全系統 Audit Trail（brainstorm D2-D4, D8, D9, D13）| `audit_log` 表 + Postgres trigger 強制 append-only + Change Reason Catalog |
-| Multi-tenant Level 3 預留（brainstorm A17, E1, F3-F6）| schema 全表帶 `tenant_id NOT NULL` + tenant context proxy（`src/proxy.ts`）+ repository pattern + ESLint rule |
-| AI 三道地基預留（brainstorm C8）| Event Stream（用 audit_log + LISTEN/NOTIFY）+ jsonb 欄位預留 + change_reason_catalog |
-| Resend 整合（F-H3）| Phase 1 啟用，admin magic-link 邀請信走 Resend，不再手動貼連結 |
-| Vercel Pro 文件化（F-H2、brainstorm A14, H1）| spec / Plan 1 / Plan 8 / memory 全部標明 |
-| ADR 系統 | `docs/adr/` + 131 個 ADR + 自動化 `audit-docs.mjs` script + CI |
-| 文件結構重構 | spec / plans / runbook 各司其職、廢除 continue.md、research 加歷史 banner |
-| 4 招文件債緩解 | doc-audit script + PR template + 結構簡化 + per-Plan mini-audit |
+| 項目                                                   | 落地形式                                                                                                      |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Hexagonal architecture（brainstorm F7-F11）            | `src/adapters/` + 5 個 adapter interface + ESLint 強制 rule                                                   |
+| 全系統 Audit Trail（brainstorm D2-D4, D8, D9, D13）    | `audit_log` 表 + Postgres trigger 強制 append-only + Change Reason Catalog                                    |
+| Multi-tenant Level 3 預留（brainstorm A17, E1, F3-F6） | schema 全表帶 `tenant_id NOT NULL` + tenant context proxy（`src/proxy.ts`）+ repository pattern + ESLint rule |
+| AI 三道地基預留（brainstorm C8）                       | Event Stream（用 audit_log + LISTEN/NOTIFY）+ jsonb 欄位預留 + change_reason_catalog                          |
+| Resend 整合（F-H3）                                    | Phase 1 啟用，admin magic-link 邀請信走 Resend，不再手動貼連結                                                |
+| Vercel Pro 文件化（F-H2、brainstorm A14, H1）          | spec / Plan 1 / Plan 8 / memory 全部標明                                                                      |
+| ADR 系統                                               | `docs/adr/` + 131 個 ADR + 自動化 `audit-docs.mjs` script + CI                                                |
+| 文件結構重構                                           | spec / plans / runbook 各司其職、廢除 continue.md、research 加歷史 banner                                     |
+| 4 招文件債緩解                                         | doc-audit script + PR template + 結構簡化 + per-Plan mini-audit                                               |
 
 ---
 
 ## 5 個 Phase 路線圖
 
-| Phase | PR # | 主題 | 預估工時 | 依賴 |
-|---|---|---|---|---|
-| 1 | TBD | 必修紅線 + Vercel Pro doc + Low fixes | 4-6 小時 | 無 |
-| 2 | TBD | ADR 系統 + 文件結構重構 + 4 招緩解 | 13-18 小時 | Phase 1 merged |
-| 3 | TBD | Hexagonal 骨架 (Plan 1 Task 11.5) | 6-10 小時 | Phase 2 merged |
-| 4 | TBD | Audit log + jsonb + tenant Level 3 預留 | 16-22 小時 | Phase 3 merged |
-| 5 | （Plan 2 PR） | doc-audit CI job + L5 build check | 3-4 小時 | Phase 4 merged |
-| **合計** | 5 PRs | | **42-60 小時** | |
+| Phase    | PR #          | 主題                                    | 預估工時       | 依賴           |
+| -------- | ------------- | --------------------------------------- | -------------- | -------------- |
+| 1        | TBD           | 必修紅線 + Vercel Pro doc + Low fixes   | 4-6 小時       | 無             |
+| 2        | TBD           | ADR 系統 + 文件結構重構 + 4 招緩解      | 13-18 小時     | Phase 1 merged |
+| 3        | TBD           | Hexagonal 骨架 (Plan 1 Task 11.5)       | 6-10 小時      | Phase 2 merged |
+| 4        | TBD           | Audit log + jsonb + tenant Level 3 預留 | 16-22 小時     | Phase 3 merged |
+| 5        | （Plan 2 PR） | doc-audit CI job + L5 build check       | 3-4 小時       | Phase 4 merged |
+| **合計** | 5 PRs         |                                         | **42-60 小時** |                |
 
 每 PR 之間有依賴 — **不能並行**。每 PR merge 後才能進下一 Phase。
 
@@ -339,26 +339,26 @@ When:  2026-05-10 寫入；預估 4-6 週逐 phase 執行。每 phase 完成後�
 
 ## 風險與緩解
 
-| 風險 | 緩解 |
-|---|---|
-| 5 個 PR 之間有依賴 → 中間 PR 卡住整個 chain | 每 PR 獨立 review、若某 PR 需大改可 revert 從上一 phase 重來 |
-| ADR 131 條一次寫太多會疲勞 → 品質下降 | Phase 2 內部再切 batch（每 batch ~25 條），分段 commit |
-| Phase 4 schema 大重寫破壞 Plan 1 既有測試 | 先在 staging Neon branch 試 migration、確認無破壞才合 main |
-| 工時估超出（>60 hr）| 每 Phase 完成後檢視實際 vs 估計、若偏差 >30% 暫停與使用者重議範圍 |
-| 過度設計風險（D13 內稽報表沒人 review = 文件債）| Phase 4 限縮 D13 為 Phase 2；Phase 1 只做核心 |
-| Mike 大記憶遞延（半年後忘了為什麼這樣設計）| ADR 系統 + memory + per-Phase mini-audit 三層保險 |
+| 風險                                             | 緩解                                                              |
+| ------------------------------------------------ | ----------------------------------------------------------------- |
+| 5 個 PR 之間有依賴 → 中間 PR 卡住整個 chain      | 每 PR 獨立 review、若某 PR 需大改可 revert 從上一 phase 重來      |
+| ADR 131 條一次寫太多會疲勞 → 品質下降            | Phase 2 內部再切 batch（每 batch ~25 條），分段 commit            |
+| Phase 4 schema 大重寫破壞 Plan 1 既有測試        | 先在 staging Neon branch 試 migration、確認無破壞才合 main        |
+| 工時估超出（>60 hr）                             | 每 Phase 完成後檢視實際 vs 估計、若偏差 >30% 暫停與使用者重議範圍 |
+| 過度設計風險（D13 內稽報表沒人 review = 文件債） | Phase 4 限縮 D13 為 Phase 2；Phase 1 只做核心                     |
+| Mike 大記憶遞延（半年後忘了為什麼這樣設計）      | ADR 系統 + memory + per-Phase mini-audit 三層保險                 |
 
 ---
 
 ## 進度追蹤
 
-| Phase | Branch | PR # | Status | Merged Commit | mini-audit |
-|---|---|---|---|---|---|
-| 1 | `feat/rigorous-foundation-phase-1` | TBD | In Progress | — | — |
-| 2 | `feat/rigorous-foundation-phase-2` | — | Pending | — | — |
-| 3 | `feat/rigorous-foundation-phase-3` | — | Pending | — | — |
-| 4 | `feat/rigorous-foundation-phase-4` | — | Pending | — | — |
-| 5 | （Plan 2 PR）| — | Pending | — | — |
+| Phase | Branch                             | PR # | Status      | Merged Commit | mini-audit |
+| ----- | ---------------------------------- | ---- | ----------- | ------------- | ---------- |
+| 1     | `feat/rigorous-foundation-phase-1` | TBD  | In Progress | —             | —          |
+| 2     | `feat/rigorous-foundation-phase-2` | —    | Pending     | —             | —          |
+| 3     | `feat/rigorous-foundation-phase-3` | —    | Pending     | —             | —          |
+| 4     | `feat/rigorous-foundation-phase-4` | —    | Pending     | —             | —          |
+| 5     | （Plan 2 PR）                      | —    | Pending     | —             | —          |
 
 ---
 

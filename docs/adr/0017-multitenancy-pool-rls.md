@@ -1,13 +1,13 @@
 # ADR 0017 — 多租戶資料隔離採 AWS Pool 模式（共享 DB + tenant_id + RLS）
 
-| Field | Value |
-|---|---|
-| Status | Accepted |
-| Date | 2026-05-10 |
-| Supersedes | — |
-| Superseded by | — |
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| Status          | Accepted                                                                    |
+| Date            | 2026-05-10                                                                  |
+| Supersedes      | —                                                                           |
+| Superseded by   | —                                                                           |
 | Brainstorm 來源 | `location-and-coverage-v2.html`, `platform-rigorous-analysis.html` 決議 A17 |
-| Related ADR | ADR-0003, ADR-0016, ADR-0019, ADR-0089, ADR-0133 |
+| Related ADR     | ADR-0003, ADR-0016, ADR-0019, ADR-0089, ADR-0133                            |
 
 ## Context
 
@@ -20,15 +20,18 @@ AWS SaaS Lens 三種多租戶資料隔離模型：(1) **Silo** — 每租戶獨�
 ## Consequences
 
 ### ✅ 好處
+
 - 一份 schema 服務無限租戶；運維 / 升級成本低
 - RLS 在 DB 層強制；application bug 不會跨租戶洩資料
 - 與 ltree（ADR-0016）/ jsonb attributes（ADR-0019）相容
 
 ### ⚠️ 代價
+
 - RLS policy 設計 / 測試複雜；漏設 = catastrophic data leak → 必須有專門測試（per-table RLS test）
 - 連線設定 `app.tenant_id` 在 serverless 連線池場景需小心（每次 query 前確認）
 
 ### 🔮 未來影響
+
 - 大客戶若要求 Silo（獨立 DB）→ Pool / Silo 混合（dual mode），現有 schema 不變
 - Phase 2 SaaS 啟用時主要工作是 onboarding flow + per-tenant config，data layer 已就緒
 
@@ -39,6 +42,6 @@ AWS SaaS Lens 三種多租戶資料隔離模型：(1) **Silo** — 每租戶獨�
 
 ## Amendments
 
-| Date | PR | Reason | Change |
-|---|---|---|---|
+| Date       | PR                      | Reason                                                             | Change                                                                |
+| ---------- | ----------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | 2026-05-11 | TBD (Plan 2 mini-audit) | 同 ADR-0089 — Round-3 doc audit 發現與 ADR-0133 多租戶耦合單向引用 | Related ADR 加 ADR-0089, ADR-0133（cross-link 補充；Decision 段不動） |
