@@ -851,6 +851,24 @@ git commit -m "test(security): red-team status change permission + audit trail"
 
 ---
 
+## Phase 4 Additions (rigorous foundation — 2026-05-11)
+
+> Plan 6 涉及狀態變更 + LINE webhook 接收兩個寫入點，須各自加 audit_log + outbox INSERT 同 transaction（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md)）。
+
+### Task 6.6: audit_log + outbox integration
+
+| 寫入點 | 目標 table | audit `what` | audit `reason_code` | outbox `event_type` |
+|---|---|---|---|---|
+| Task 4 admin 狀態變更 server action | `cases` + `case_status_history` | `CASE_STATUS_CHANGED` | `ADMIN_MANUAL_UPDATE` 或 `CASE_REOPENED_QC_REJECT` 等 | `RepairRequest.StatusChanged` |
+| Task 7 LINE webhook 接收 | （無 DB 寫入；只 reply）| `LINE_WEBHOOK_RECEIVED` | `LINE_INBOUND` | `LineWebhook.Received` |
+| Task 6 push 通知（成功 / 失敗）| （無 DB 寫入）| `LINE_PUSH_SENT` 或 `LINE_PUSH_FAILED` | `LINE_OUTBOUND` | `LineMessage.Pushed` |
+
+**Pattern**：admin 狀態變更同 transaction 寫 cases + case_status_history + audit_log + outbox。LINE webhook 接收先驗 signature（per Plan 6 Task 7），驗過才寫 audit；簽章失敗也寫 audit (`reason_code = 'LINE_INVALID_SIGNATURE'`)。
+
+`who` 在 admin 操作時 = `session.user.id`；LINE webhook 接收 = `SYSTEM_ACTOR_UUID`。
+
+---
+
 ## 後續
 
 完成 Plan 6 接 Plan 7（LINE OA 客戶查詢 + Rich Menu）。

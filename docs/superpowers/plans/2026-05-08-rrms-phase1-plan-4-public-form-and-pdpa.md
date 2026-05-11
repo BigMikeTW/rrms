@@ -721,6 +721,56 @@ git commit -m "test(security): red-team rate limit blocks 11th submission per IP
 
 ---
 
+## Phase 4 Additions (rigorous foundation — 2026-05-11)
+
+> Plan 4 涉及兩個業務寫入點，須各自加 audit_log + outbox INSERT 同 transaction（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) + [ADR-0078](../../adr/0078-change-reason-catalog.md) + [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md)）。
+
+### Task 4.5: audit_log + outbox integration
+
+| 寫入點 | 目標 table | audit `what` | audit `reason_code` | outbox `event_type` |
+|---|---|---|---|---|
+| Task 4 提交 server action — INSERT cases | `cases` | `CASE_CREATED` | `PUBLIC_FORM_SUBMISSION` | `RepairRequest.Created` |
+| Task 4 提交 server action — INSERT consent record | `consent_versions` | `CONSENT_RECORDED` | `PUBLIC_FORM_SUBMISSION` | `Consent.Recorded` |
+
+**Pattern**:
+```ts
+await db.transaction(async (tx) => {
+  const repos = makeRepositories(tx, tenantId);
+  const newCase = await repos.cases.create({ /* ... */ });
+  await repos.auditLog.insert({
+    who: SYSTEM_ACTOR_UUID,           // 公開表單無 logged-in user
+    what: 'CASE_CREATED',
+    resourceType: 'case',
+    resourceId: newCase.id,
+    before: null,
+    after: redactPII(newCase),         // PII 須走 redactor (per ADR-0133)
+    reasonCode: 'PUBLIC_FORM_SUBMISSION',
+    ipAddress: req.headers.get('x-forwarded-for'),
+    userAgent: req.headers.get('user-agent'),
+    requestId: req.headers.get('x-vercel-id') ?? crypto.randomUUID(),
+  });
+  await repos.outbox.insert({
+    aggregateType: 'RepairRequest',
+    aggregateId: newCase.id,
+    eventType: 'RepairRequest.Created',
+    payload: { caseId: newCase.id, caseNo: newCase.caseNo },
+    idempotencyKey: `case-created-${newCase.id}`,
+  });
+});
+```
+
+`SYSTEM_ACTOR_UUID = '00000000-0000-0000-0000-000000000000'`（Phase 1 公開表單無 logged-in user 時用此固定常數；與 reserved anonymized sentinel `...ffff` 不同 — 不要混淆）。
+
+### Task 4.6: PII redactor
+
+Per ADR-0133 方案 A：`redactPII(obj)` 是純函數，輸入物件 → 輸出移除 / 替換 PII key 後的副本（`reporter_name` / `reporter_phone` / `reporter_email` / `line_user_id` 等）。在 Plan 3 Task 8.5 repository 內統一使用。
+
+**Files:**
+- Create: `src/lib/pii-redactor.ts`
+- Test: `__tests__/pii-redactor.test.ts`
+
+---
+
 ## 後續
 
 完成 Plan 4 接 Plan 5（Dropbox 媒體上傳）。

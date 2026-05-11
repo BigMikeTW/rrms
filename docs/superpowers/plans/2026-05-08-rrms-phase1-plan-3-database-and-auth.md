@@ -1433,6 +1433,479 @@ git commit -m "test(security): red-team auth — cookie HttpOnly + privilege esc
 
 ---
 
+## Phase 4 Additions (rigorous foundation Phase 4 — 2026-05-11)
+
+> **歷史註記**：原 Plan 3（2026-05-08 寫）涵蓋 Better Auth + 10 張業務/auth 表 + Cookie 安全。Pre-Plan-2 rigorous foundation **Phase 4** 在 Plan 3 啟動實作前先做下列**強制補強**，對應 audit findings F-M2（audit_log 完整版）+ F-M3（jsonb + outbox）+ F-M4（multi-tenant Level 3）+ Round-3 PDPA 法理 deep-dive + Round-3 Better Auth source code 直驗證的 5 個必修項。
+>
+> **Plan 3 implementer 注意執行順序**：原 Task 1-14 跑完後，再依本段新 Task 順序執行；新 Task 之間有依賴關係，不可跳過。
+
+### 對應 ADR
+- [ADR-0017](../../adr/0017-multitenancy-pool-rls.md) Multi-tenant Pool + RLS
+- [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) audit_log append-only（Phase 4 已 amend：retention 7 年 + 跨表真匿名化）
+- [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) audit_log 13 必填欄位（Phase 4 已 amend：補 tenant_id + request_id）
+- [ADR-0078](../../adr/0078-change-reason-catalog.md) change_reason_catalog
+- [ADR-0088](../../adr/0088-reporter-pii-pdpa-handling.md) reporter PII PDPA 處理（Phase 4 已 amend：鎖定保留期 + 跨表匿名化法理）
+- [ADR-0089](../../adr/0089-multi-tenant-pool-mode-rls.md) multi-tenant Pool + RLS（Phase 2 ENABLE）
+- [ADR-0132](../../adr/0132-better-auth-replaces-authjs-v5.md) Better Auth pivot（Phase 4 已 amend：版本 pin ^1.6.10）
+- [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) audit_log 真匿名化策略（A+B+C+D 4 方案組合）★ 新
+- [ADR-0134](../../adr/0134-better-auth-phase-1-security-configuration.md) Better Auth Phase 1 強制安全配置清單 ★ 新
+
+---
+
+### Task 6.5: audit_log 表 + Postgres trigger 強制 append-only + 3-role REVOKE
+
+**對應**：ADR-0076 + ADR-0077（13 欄位）+ ADR-0133（append-only enforcement）
+
+**Files:**
+- Modify: `src/db/schema.ts`（加 `audit_log` 表 13 欄位）
+- Create: `drizzle/migrations/0001_audit_log_append_only.sql`（trigger + REVOKE — raw SQL，不走 Drizzle generate）
+
+**Schema (Drizzle)**:
+```ts
+export const auditLog = pgTable('audit_log', {
+  id:            uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  tenantId:      uuid('tenant_id').notNull(),                         // ADR-0017
+  requestId:     uuid('request_id').notNull(),                        // OpenTelemetry correlation
+  who:           uuid('who').notNull(),                               // actor user_id; ADR-0133 真匿名化處理
+  occurredAt:    timestamp('occurred_at', { withTimezone: true })
+                   .notNull().defaultNow(),
+  what:          text('what').notNull(),                              // event type, e.g. 'CASE_STATUS_CHANGED'
+  resourceType:  text('resource_type').notNull(),                     // 'case' | 'media' | 'consent' | 'user' …
+  resourceId:    uuid('resource_id').notNull(),
+  before:        jsonb('before'),                                      // null on INSERT; PII redacted
+  after:         jsonb('after'),                                       // null on DELETE; PII redacted
+  reasonCode:    text('reason_code').notNull(),                        // FK to change_reason_catalog
+  reasonNote:    text('reason_note'),
+  approvalChain: jsonb('approval_chain'),                              // 高敏感事件
+  ipAddress:     inet('ip_address'),
+  userAgent:     text('user_agent'),
+}, (t) => ({
+  tenantIdx:    index('audit_log_tenant_idx').on(t.tenantId, t.occurredAt),
+  resourceIdx:  index('audit_log_resource_idx').on(t.resourceType, t.resourceId),
+  requestIdx:   index('audit_log_request_idx').on(t.requestId),
+  whoIdx:       index('audit_log_who_idx').on(t.who, t.occurredAt),
+}));
+```
+
+**Migration SQL（raw — drizzle generate 不會產 trigger）**:
+```sql
+-- 1. Append-only trigger — 第二道防線（trap superuser via application path）
+CREATE OR REPLACE FUNCTION audit_log_block_modify()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'audit_log is append-only (per ADR-0076)';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER audit_log_no_update
+  BEFORE UPDATE OR DELETE ON audit_log
+  FOR EACH ROW EXECUTE FUNCTION audit_log_block_modify();
+
+-- 2. Role 權限（必跑，第一道防線）— per Task 7.6 三 role 模型
+REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM rrms_app;
+GRANT  INSERT, SELECT ON audit_log TO rrms_app;
+```
+
+**驗收**：
+- [ ] schema.ts 加表後 `pnpm exec drizzle-kit generate` 產出 SQL 含 `CREATE TABLE audit_log`
+- [ ] 手動建立 `0001_audit_log_append_only.sql`（drizzle generate 不會產 trigger / REVOKE，必須手寫）
+- [ ] `pnpm exec drizzle-kit migrate` 跑通
+- [ ] 用 `rrms_app` role 連線測試：`UPDATE audit_log SET who = '...'` → 應 RAISE EXCEPTION
+
+---
+
+### Task 6.6: change_reason_catalog 表 + Phase 1 種子資料
+
+**對應**：ADR-0078（per Phase 4 amend 加兩個匿名化 reason）
+
+**Files:**
+- Modify: `src/db/schema.ts`（加 `change_reason_catalog` 表）
+- Create: `scripts/seed-change-reasons.ts`
+
+**Schema**:
+```ts
+export const changeReasonCatalog = pgTable('change_reason_catalog', {
+  code:        text('code').primaryKey(),         // e.g. 'NODE_ARCHIVED_DUPLICATE'
+  description: text('description').notNull(),
+  category:    text('category').notNull(),        // 'node' | 'contract' | 'case' | 'user'
+  createdAt:   timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+```
+
+**Phase 1 seed (per ADR-0078 amended)**:
+- `NODE_ARCHIVED_DUPLICATE`、`NODE_ARCHIVED_TENANT_LEFT`、`NODE_ARCHIVED_REORG`
+- `CONTRACT_TERMINATED_EXPIRED`、`CONTRACT_TERMINATED_DEFAULT`
+- `RATE_CARD_UPDATE`、`POST_RESOLUTION_ADJUSTMENT`、`DISPUTED_RESOLUTION`
+- `CASE_REOPENED_CUSTOMER_REQUEST`、`CASE_REOPENED_QC_REJECT`
+- `USER_ANONYMIZED_RETENTION_EXPIRED` ★ 新（cron 觸發）
+- `USER_ANONYMIZED_RIGHTS_REQUEST` ★ 新（per ADR-0133 方案 D，當事人請求觸發）
+
+---
+
+### Task 6.7: outbox 表（取代 LISTEN/NOTIFY；per Round-2）
+
+**對應**：Round-2 確認 Vercel + Neon serverless 不適合 LISTEN/NOTIFY（Neon 官方明文 + Vercel function 無常駐 listener）；改 Outbox + Vercel Cron poll。
+
+**Schema**:
+```ts
+export const outbox = pgTable('outbox', {
+  id:              uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  tenantId:        uuid('tenant_id').notNull(),
+  aggregateType:   text('aggregate_type').notNull(),         // 'RepairRequest', 'User', etc.
+  aggregateId:     uuid('aggregate_id').notNull(),
+  eventType:       text('event_type').notNull(),             // 'RepairRequest.Created'
+  eventVersion:    smallint('event_version').notNull().default(1),
+  payload:         jsonb('payload').notNull(),
+  metadata:        jsonb('metadata').notNull().default(sql`'{}'::jsonb`),
+  status:          text('status').notNull().default('pending'),   // 'pending' | 'dispatching' | 'published' | 'failed' | 'dead_letter'
+  attempts:        smallint('attempts').notNull().default(0),
+  maxAttempts:     smallint('max_attempts').notNull().default(8),
+  nextAttemptAt:   timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+  lastError:       text('last_error'),
+  createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  publishedAt:     timestamp('published_at', { withTimezone: true }),
+  idempotencyKey:  text('idempotency_key').notNull().unique(),
+}, (t) => ({
+  pendingIdx:    index('outbox_pending_idx').on(t.nextAttemptAt, t.createdAt),
+  aggregateIdx:  index('outbox_aggregate_idx').on(t.aggregateType, t.aggregateId, t.createdAt),
+}));
+```
+
+CHECK constraint via raw SQL migration: `CHECK (status IN ('pending','dispatching','published','failed','dead_letter'))`。
+
+Dispatcher 與 Cron handler 在 Plan 8 實作（per Phase 4 plan extension）。
+
+---
+
+### Task 6.8: 全業務表加 tenant_id NOT NULL DEFAULT
+
+**對應**：ADR-0017 Multi-tenant Level 3（Phase 1 schema 預留 + Phase 2 啟用 RLS）
+
+**修改既有業務表**（由 Plan 3 Task 4-5 已建的：cases, case_status_history, case_media, line_bindings, consent_versions, query_attempts；以及 Better Auth 4 張表 user, session, account, verification）：
+
+```ts
+// 每張業務表 schema 加：
+tenantId: uuid('tenant_id').notNull().default('00000000-0000-0000-0000-000000000001'),
+```
+
+**Phase 1 default tenant**：UUID `'00000000-0000-0000-0000-000000000001'` 為 default tenant（單租戶模式）；audit_log + change_reason_catalog + outbox 同樣加。
+
+**為何 NOT NULL DEFAULT 而非 nullable**：per ADR-0017「資料模型必須第一天就設計好，不能後補（後補 = data migration 災難）」。
+
+---
+
+### Task 6.9: Drizzle pgPolicy declare-only（Phase 4 declare；Phase 2 ENABLE）
+
+**對應**：ADR-0017 + ADR-0089；Round-2 確認 Drizzle pgPolicy v1.0.0-rc.2 仍 RC，**只用 generate + migrate，禁 push**（CI 加擋）
+
+每張帶 `tenant_id` 的表用 Drizzle `pgPolicy` API declare RLS policy（不 ENABLE）：
+
+```ts
+// 範例 — cases 表
+export const cases = pgTable('cases', {
+  // ... 既有欄位 + tenantId
+}, (t) => ({
+  // pgPolicy declare（Phase 2 才 ALTER TABLE ... ENABLE ROW LEVEL SECURITY）
+  tenantIsolation: pgPolicy('cases_tenant_isolation', {
+    as: 'permissive',
+    for: 'all',
+    to: 'rrms_app',
+    using: sql`${t.tenantId} = current_setting('app.tenant_id')::uuid`,
+  }),
+}));
+```
+
+**Phase 2 啟用時**用 raw SQL migration（避開 Drizzle pgPolicy bug #3504/#4407/#4198/#3495）：
+```sql
+ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cases FORCE ROW LEVEL SECURITY;  -- 連 owner 也擋（per Bytebase footgun #8）
+```
+
+---
+
+### Task 7.5: tenant context proxy（Next.js 16 — `proxy.ts` 而非 `middleware.ts`）
+
+**對應**：ADR-0017；Round-2 確認 Next.js 16 已將 `middleware` 改名為 `proxy`（v16.0.0）
+
+**Files:**
+- Create: `src/proxy.ts`（Phase 1 default tenant；Phase 2 加 subdomain 解析）
+- Create: `src/lib/tenant-context.ts`（server code 讀 header 的 helper）
+- Create: `src/lib/tenant-resolver.ts`（subdomain → tenant_id mapping；Phase 1 純 in-memory）
+
+**proxy.ts 設計**（per Round-2 + Round-3 verification）：
+- 解 `req.headers.get('host')` → subdomain
+- `requestHeaders.delete('x-tenant-id')` → 防 client 偽造
+- `requestHeaders.set('x-tenant-id', resolvedTenantId)` → 下游可讀
+- Phase 1：root host (rrms.pro080.com / rrms-dev.pro080.com / localhost:3000) → DEFAULT_TENANT；其他 subdomain → 查 tenant resolver cache
+- Phase 2：實際 subdomain → tenant 查表 + Vercel KV / Upstash cache
+
+**tenant-context.ts 設計**：
+- 用 React `cache()` 包 `headers().get('x-tenant-id')` — Next.js 官方推薦 RSC pattern（per Round-2 Q4），不用 AsyncLocalStorage（middleware ↔ handler 不通；per GitHub issue #69298）
+- `getCurrentTenantId(): string` — throws if missing
+- `getRepositories(): Repositories` — factory: `makeRepositories(db, tenantId)`
+
+詳細 code 範例見：[`src/adapters/cache/`](../../../src/adapters/cache/) port + [`src/lib/tenant-context.ts`](../../../src/lib/tenant-context.ts)（Phase 4 已落地）+ [`src/proxy.ts`](../../../src/proxy.ts)（Phase 4 skeleton；Phase 2 補真實 resolver）。
+
+---
+
+### Task 7.6: 3-role Neon setup migration
+
+**對應**：Round-2 + Round-3：Neon `neondb_owner` 預設 BYPASSRLS（superuser membership），Phase 2 啟用 RLS 時 admin 會繞過 → 必須建 3 個 role
+
+**Files:**
+- Create: `drizzle/migrations/0002_setup_roles.sql`（手寫 raw SQL）
+- Modify: `.env.example`（加 `DATABASE_URL_MIGRATION` + `DATABASE_URL_APP` 兩條）
+- Modify: `drizzle.config.ts`（用 `DATABASE_URL_MIGRATION`）
+- Modify: `src/db/client.ts`（用 `DATABASE_URL_APP`）
+
+**SQL**:
+```sql
+-- run as neondb_owner once during Phase 4 deployment
+CREATE ROLE rrms_migration LOGIN PASSWORD '<set via Neon Console or vercel env>'
+  NOINHERIT NOBYPASSRLS;
+CREATE ROLE rrms_app LOGIN PASSWORD '<set via Neon Console or vercel env>'
+  NOINHERIT NOBYPASSRLS;
+GRANT CONNECT ON DATABASE neondb TO rrms_migration, rrms_app;
+GRANT USAGE ON SCHEMA public TO rrms_app;
+
+-- migration role: full DDL + DML
+GRANT ALL ON ALL TABLES IN SCHEMA public TO rrms_migration;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO rrms_migration;
+
+-- app role: SELECT/INSERT/UPDATE/DELETE on most tables, REVOKE on audit_log
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rrms_app;
+REVOKE UPDATE, DELETE ON audit_log FROM rrms_app;  -- per Task 6.5 append-only
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO rrms_app;
+```
+
+**Operational note**：role 密碼存 Vercel env（`DATABASE_URL_MIGRATION` + `DATABASE_URL_APP`）；migration 跑時用 migration role；application runtime 用 app role；**runtime 永不用 owner**。
+
+---
+
+### Task 7.7: Better Auth 安全配置（per ADR-0134 5 必修）
+
+**對應**：ADR-0134 — Round-3 source code 直驗證 Better Auth v1.6.10 的 5 個必修配置
+
+**Files modified:**
+- `src/lib/auth.ts`（加 5 個必設項）
+- `package.json`（pin `better-auth@^1.6.10`）
+- `app/api/auth/[...all]/route.ts`（加 magic-link wrapper）
+
+**配置**:
+```ts
+// src/lib/auth.ts
+import { betterAuth } from 'better-auth';
+import { magicLink, admin } from 'better-auth/plugins';
+import { genericOAuth } from 'better-auth/plugins/generic-oauth';
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, { provider: 'pg' }),
+
+  // ADR-0134 #3: 禁自動 link
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: [],          // ← MUST 空陣列；LINE 永遠不入
+      disableImplicitLinking: true,  // ← MUST true
+    },
+  },
+
+  emailAndPassword: { enabled: true },
+  socialProviders: { google: { clientId, clientSecret } },
+
+  plugins: [
+    genericOAuth({                   // LINE Login (per ADR-0132)
+      config: [{
+        providerId: 'line',
+        // 不要 mapProfileToUser 把 emailVerified 強設為 true
+        // ...
+      }],
+    }),
+
+    magicLink({
+      storeToken: 'hashed',          // ← MUST hashed (ADR-0134 #1)；預設 'plain' 是地雷
+      expiresIn: 60 * 10,            // 10 分鐘 (per ADR-0134 #1 員工友善)
+      allowedAttempts: 1,            // 已是 default
+      sendMagicLink: async ({ email, url, token }, ctx) => {
+        await rateLimitCheckByEmail(email, { window: 3600, max: 5 }); // ADR-0134 #4
+        const { emailAdapter } = await import('@/adapters/email');
+        await emailAdapter.sendTransactional({ /* ... */ });
+      },
+    }),
+
+    admin({ /* default 'admin' / 'user' roles */ }),
+  ],
+
+  // ADR-0134 #6: audit log integration via generic hook
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      const auditEvents: Record<string, string> = {
+        '/sign-in/magic-link': 'AUTH_SIGNIN_MAGICLINK',
+        '/sign-in/email':       'AUTH_SIGNIN_PASSWORD',
+        '/sign-in/social':      'AUTH_SIGNIN_OAUTH',
+        '/sign-out':            'AUTH_SIGNOUT',
+        '/admin/set-role':      'AUTH_ROLE_CHANGED',
+        '/admin/create-user':   'AUTH_USER_CREATED',
+      };
+      const event = auditEvents[ctx.path];
+      if (!event) return;
+      const repos = await getRepositories();
+      await repos.auditLog.insert({
+        who: ctx.context.newSession?.user.id ?? '00000000-0000-0000-0000-000000000000',
+        what: event,
+        resourceType: 'auth',
+        resourceId: ctx.context.newSession?.user.id ?? '00000000-...0000',
+        before: null,
+        after: { path: ctx.path, body: redactPII(ctx.body) },
+        reasonCode: 'AUTH_FLOW',
+        ipAddress: ctx.headers.get('x-forwarded-for'),
+        userAgent: ctx.headers.get('user-agent'),
+      });
+    }),
+  },
+});
+```
+
+### Task 7.8: Magic-link wrapper — INSERT 前 DELETE 同 email pending tokens
+
+**對應**：ADR-0134 #2 — Round-3 source code 確認 Better Auth 不 invalidate 舊 token
+
+**Files:**
+- Create or modify: `app/api/auth/[...all]/route.ts`
+
+包一層 wrapper：當 `POST /sign-in/magic-link` 收到 email，先 DELETE `verification` table 中對應 email 的 pending token，再 forward 給 Better Auth handler。具體 SQL pattern 見 ADR-0134 § Decision #2。
+
+### Task 7.9: Better Auth admin invite 自組（per ADR-0134 #6）
+
+**對應**：Round-3 確認 Better Auth admin plugin 沒有原生 invite — issue #4216 / #4226 仍 open
+
+**Files:**
+- Modify: `src/app/admin/users/actions.ts`（重寫 invite server action）
+- Modify: `src/app/invite/page.tsx`（強制 setup password）
+
+**Flow**:
+1. Admin 在後台填新 admin email + 預先指定 role
+2. Server Action 呼叫：
+   - `auth.api.createUser({ body: { email, name, role: 'admin', data: { emailVerified: false } } })` — 建 user record（emailVerified=false 故意，等 magicLinkVerify 升級）
+   - `auth.api.signInMagicLink({ body: { email, callbackURL: '/admin/setup' } })` — 觸發 wrapper（per Task 7.8）+ 寄信
+3. 受邀者點 link → Better Auth verify token → emailVerified 自動升 true → session 建立 → redirect /admin/setup
+4. /admin/setup 強制要求設定密碼（per password reset flow）
+
+**Edge cases**: per ADR-0134 § Decision；UI 顯示「之前那封信仍可使用 5 分鐘」提示已不需要（Task 7.8 wrapper 已 invalidate）。
+
+---
+
+### Task 8.5: Repository pattern (`src/db/repositories/*.ts`)
+
+**對應**：ADR-0017 Multi-tenant Level 3 + Round-2 + Round-3 verified pattern
+
+**Files:**
+- Create: `src/db/repositories/index.ts`（factory: `makeRepositories(db, tenantId)`）
+- Create: `src/db/repositories/case.repository.ts`
+- Create: `src/db/repositories/case-status-history.repository.ts`
+- Create: `src/db/repositories/case-media.repository.ts`
+- Create: `src/db/repositories/line-binding.repository.ts`
+- Create: `src/db/repositories/consent.repository.ts`
+- Create: `src/db/repositories/query-attempt.repository.ts`
+- Create: `src/db/repositories/audit-log.repository.ts`（write-only — REVOKE UPDATE/DELETE 已擋；query 用 SELECT）
+- Create: `src/db/repositories/outbox.repository.ts`
+- Create: `src/db/repositories/change-reason.repository.ts`
+- Create: `src/db/with-tenant.ts`（transaction wrapper for `set_config('app.tenant_id', ?, TRUE)` — Phase 2 RLS ENABLE 後須用）
+
+**Pattern (per Round-2 Q1 範例)**:
+```ts
+export class CaseRepository {
+  constructor(
+    private readonly db: typeof Db,
+    private readonly tenantId: string,
+  ) {}
+
+  async findById(id: string): Promise<Case | null> {
+    const rows = await this.db
+      .select()
+      .from(cases)
+      .where(and(eq(cases.id, id), eq(cases.tenantId, this.tenantId)))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+  // ... list / create / update — 全部自動 tenant filter
+}
+```
+
+`with-tenant.ts` 為 Phase 2 RLS ENABLE 預備（Phase 1 不必呼叫；應用層 `where eq(tenantId)` 已擋）。
+
+---
+
+### Task 8.6: ESLint rule `no-direct-db-query` + 紅隊 fixture
+
+**對應**：Round-2 Q2 設計
+
+**Files:**
+- Create: `eslint-rules/no-direct-db-query.mjs`
+- Modify: `eslint.config.mjs`（註冊 rule）
+- Create: `__tests__/__fixtures__/violation-no-direct-db-query.ts`
+
+詳細設計見 Phase 4 已落地檔案。
+
+---
+
+### Task 8.7: Cache adapter port + InMemoryCacheAdapter（per Round-2 Q6）
+
+**對應**：Vercel KV 已停售（per Round-2）→ Phase 1 純 in-memory + Fluid Compute warm reuse
+
+**Files:**
+- Create: `src/adapters/cache/index.ts`（TenantCachePort）
+- Create: `src/adapters/cache/InMemoryCacheAdapter.ts`（Phase 1 default）
+
+詳細 port 設計見 ADR-0110 Exception 段（per Phase 3 落地紀律）+ Phase 4 已落地檔案。
+
+---
+
+### Task 14.5: Playwright 跨租戶資料隔離測試
+
+**對應**：ADR-0017 multi-tenant；Round-2 業界共識「failure modes」中「新表忘記加 RLS」最危險
+
+**Files:**
+- Create: `__tests__/integration/cross-tenant-isolation.spec.ts`
+
+**Test scenarios**:
+1. 同一帳號 alpha 訪問 `alpha.localhost:3000` 看到 alpha 的 cases；訪 `beta.localhost:3000` 看不到 alpha 的 cases
+2. 直接打 API 帶 `?tenant_id=beta` 也看不到（proxy 設 header 客戶端不能偽造）
+3. 嘗試 SQL injection 繞過 repository 的 `WHERE tenantId = ?` — 應失敗
+
+**本機 dev mock subdomain**：`hosts` 加 `127.0.0.1 alpha.localhost beta.localhost`。
+
+---
+
+### Task 14.6: audit_log immutability test
+
+**對應**：Task 6.5 trigger + REVOKE 雙保險
+
+**Test scenarios**:
+1. 用 `rrms_app` role 連線：`UPDATE audit_log` → 應 REVOKE 擋下（permission denied）
+2. 用 `rrms_migration` role 連線：`UPDATE audit_log` → 應 trigger 擋下（RAISE EXCEPTION）
+3. 用 `neondb_owner` role 連線：`UPDATE audit_log` → 應 trigger 擋下（trigger 對所有 role 生效）
+
+---
+
+### Phase 4 Additions 驗收條件
+
+- [ ] 全部新 schema (audit_log + change_reason_catalog + outbox) 已建立 + tenant_id 加到全表
+- [ ] Drizzle pgPolicy declare（不 ENABLE）；CI 禁 `drizzle-kit push`
+- [ ] 3-role Neon setup 完成；migration 用 migration role；app runtime 用 app role
+- [ ] proxy.ts 設 `x-tenant-id` header；server code 用 `getCurrentTenantId()` 取得
+- [ ] Better Auth 5 必修配置已設（storeToken=hashed / disableImplicitLinking / 空 trustedProviders / pin ^1.6.10 / audit hook / per-email rate limit）
+- [ ] magic-link wrapper INSERT 前 DELETE pending — 整合測試驗證
+- [ ] admin invite flow 走「createUser + signInMagicLink」自組；callback 強制 setup password
+- [ ] 全部 repositories 寫好 + ESLint rule 抓得到「直 import @/db/client」違規 fixture
+- [ ] cache adapter port + InMemoryCacheAdapter 落地
+- [ ] Playwright 跨租戶測試 + audit_log immutability 測試 PASS
+- [ ] CI 加 `pnpm audit --audit-level=high` job
+- [ ] mini-audit + `pnpm audit:docs` 全綠
+
+---
+
 ## 後續
 
-完成 Plan 3 接 Plan 4（公開報修表單 + PDPA 同意機制）。
+完成 Plan 3 接 Plan 4（公開報修表單 + PDPA 同意機制 + audit log 整合）。Plan 4-8 各自加 audit insert step；Plan 8 擴展 anonymization cron 到處理 audit_log + outbox（per Phase 4 plan）。

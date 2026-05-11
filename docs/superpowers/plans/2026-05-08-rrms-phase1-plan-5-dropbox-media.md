@@ -571,6 +571,21 @@ git commit -m "test(security): red-team media upload abuse (mime/size/path/ratel
 
 ---
 
+## Phase 4 Additions (rigorous foundation — 2026-05-11)
+
+> Plan 5 涉及媒體上傳 + 刪除兩個寫入點，須各自加 audit_log + outbox INSERT 同 transaction（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) + [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md)）。
+
+### Task 5.5: audit_log + outbox integration
+
+| 寫入點 | 目標 table | audit `what` | audit `reason_code` | outbox `event_type` |
+|---|---|---|---|---|
+| Task 4 `/api/media/complete` — INSERT case_media | `case_media` | `MEDIA_UPLOADED` | `MEDIA_UPLOAD_BY_REPORTER` | `Media.Uploaded` |
+| Plan 8 anonymization 觸發 — DELETE case_media | `case_media` | `MEDIA_DELETED` | `USER_ANONYMIZED_RETENTION_EXPIRED` 或 `USER_ANONYMIZED_RIGHTS_REQUEST` | `Media.Deleted` |
+
+Pattern 同 [Plan 4 Task 4.5](2026-05-08-rrms-phase1-plan-4-public-form-and-pdpa.md#task-45-audit_log--outbox-integration)；在 repository 層統一處理（per Plan 3 Task 8.5）。媒體 binary 本身不在 audit_log；only metadata（dropboxPath, mimeType, sizeBytes, uploadedAt）以 jsonb 存入 audit `after`。
+
+---
+
 ## 後續
 
 完成 Plan 5 接 Plan 6（後台 Admin + LINE 推播）。

@@ -949,6 +949,26 @@ git commit -m "test(security): red-team verify @line/bot-sdk not in client bundl
 
 ---
 
+## Phase 4 Additions (rigorous foundation — 2026-05-11)
+
+> Plan 7 涉及客戶查詢 + 個資權利請求兩個寫入點，須各自加 audit_log INSERT（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) + [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) 方案 D）。
+
+### Task 7.6: audit_log + outbox integration
+
+| 寫入點 | 目標 table | audit `what` | audit `reason_code` | outbox `event_type` |
+|---|---|---|---|---|
+| 查詢成功 — `query_attempts` row（已 Plan 7 既有設計）| `query_attempts` | `CASE_QUERY_SUCCESS` | `CUSTOMER_LINE_QUERY` | — |
+| 查詢失敗 — `query_attempts` row（已 Plan 7 既有設計）| `query_attempts` | `CASE_QUERY_FAILED` | `CUSTOMER_LINE_QUERY` | — |
+| 個資權利請求（停止利用 / 刪除）— INSERT `customer_requests`（per Plan 7 Task 8）| `customer_requests` | `RIGHTS_REQUEST_SUBMITTED` | `CUSTOMER_RIGHTS_INVOCATION` | `CustomerRights.Submitted` |
+
+### Task 7.7: 「停止利用 / 刪除」LINE OA 觸發 → 後台 admin 處理 → 觸發跨表真匿名化
+
+per [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) 方案 D：當客戶透過 LINE OA 提交「我要停止利用 / 刪除我的資料」→ 寫入 `customer_requests` table（status=`pending`）→ 後台 admin 在 7 個工作日內處理 → 觸發 Plan 8 anonymization helper 處理該特定 case_id（不等 cron）→ 同步處理 user / cases / case_media / audit_log（真匿名化）/ outbox 五表 → 寫一筆新 audit_log row 紀錄此匿名化動作（reason_code = `USER_ANONYMIZED_RIGHTS_REQUEST`）。
+
+**處理時限驗收**：Playwright 整合測試模擬 7 個工作日內完成（不超期）+ 完成後該 case 在 LINE OA 查詢應顯示「資料已匿名化」訊息（無 PII）。
+
+---
+
 ## 後續
 
 完成 Plan 7 接 Plan 8（Anonymization Cron + Production Cutover，最終一份）。

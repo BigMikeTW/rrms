@@ -720,8 +720,105 @@ git push origin v1.0.0-phase1
 - ✅ Spec 6.3 匿名化規則完整實作（含媒體刪除、欄位清空、anonymizedAt 時間戳）
 - ✅ Spec 7.4 vercel.ts cron 與官方範例一致
 - ✅ Spec 11 待 plan 處理事項全數消化
-- ⚠️ Resend / 啟用信寄送在 Plan 3 標 TODO，Phase 2 補（Phase 1 用手動貼連結）
+- ⚠️ Resend / 啟用信寄送原 Plan 3 標 TODO；**Phase 4 改為 Phase 1 接 Resend**（per F-H3 B 方案 + ADR-0134），見 Phase 4 Additions Task 11
 - ⚠️ Phase 2 待擴展：客戶端 admin、LINE 自動列表、JIT 敏感資料授權
+
+---
+
+## Phase 4 Additions (rigorous foundation — 2026-05-11)
+
+> 原 Plan 8 anonymization cron 只處理 user / cases / case_media 三表。Pre-Plan-2 rigorous foundation **Phase 4** 依 [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) 4 方案組合（A+B+C+D）擴展為跨表真匿名化 + 7 年保留期 cron + 客戶權利請求支援。**並依 F-H3 B 方案 + ADR-0134**，Phase 4 加 Resend 整合（取代 Phase 1「手動貼連結」過渡方案）。
+
+### 對應 ADR
+- [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) audit_log retention 7 年
+- [ADR-0078](../../adr/0078-change-reason-catalog.md) reason_code（含 `USER_ANONYMIZED_RETENTION_EXPIRED` + `USER_ANONYMIZED_RIGHTS_REQUEST`）
+- [ADR-0088](../../adr/0088-reporter-pii-pdpa-handling.md) 鎖定保留期 + 跨表處理
+- [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) 真匿名化策略 4 方案
+- [ADR-0134](../../adr/0134-better-auth-phase-1-security-configuration.md) Better Auth 安全配置（admin invite via Resend）
+
+### Task 8.1: anonymization 邏輯擴展為跨 5 表處理
+
+修改 Plan 8 既有 `src/lib/anonymize.ts`：當匿名化某 case 時，**同 transaction 處理 5 張表**：
+
+| 表 | 動作 |
+|---|---|
+| `user`（如果 case 有 reporter user_id 對應）| 清空 PII（name → `(已匿名)`、phone/email → null、line_user_id → null）+ `anonymized_at = NOW()` |
+| `cases` | 同上 reporter_* 欄位 + 媒體欄位、`anonymized_at` 標記 |
+| `case_media` | DELETE 紀錄 + DELETE Dropbox 檔（per Plan 8 既有邏輯）|
+| `audit_log` | **真匿名化**（per ADR-0133 方案 A）：UPDATE `who = '00000000-...ffff'`（reserved sentinel）+ `target` / `before` / `after` jsonb 內 PII key 走 redactor |
+| `outbox` | DELETE 該 case 對應的 published 事件 + 寫一筆新 `User.Anonymized` 事件 |
+
+**寫一筆新 audit_log row 紀錄此匿名化動作**（append-only — 不破壞既有紀錄；只是替換 `who`）：
+```ts
+await repos.auditLog.insert({
+  who: SYSTEM_ACTOR_UUID,             // 此 audit row 是 cron / admin 觸發
+  what: 'USER_ANONYMIZED',
+  resourceType: 'user',
+  resourceId: anonymizedUserId,
+  before: null,
+  after: { caseId, anonymizedAt: new Date(), trigger: 'cron-retention-expired' },
+  reasonCode: 'USER_ANONYMIZED_RETENTION_EXPIRED',  // 或 _RIGHTS_REQUEST
+});
+```
+
+### Task 8.2: audit_log 7 年保留 cron
+
+**Files:**
+- Create: `src/app/api/cron/audit-log-retention/route.ts`
+- Modify: `vercel.ts`（加新 cron）
+
+```ts
+// 每天 04:00 台北時間（20:00 UTC 前一天）執行
+// per ADR-0076 + ADR-0133 方案 B，audit_log 整列保留 7 年
+const cutoff = new Date();
+cutoff.setFullYear(cutoff.getFullYear() - 7);
+const result = await repos.auditLog.deleteOlderThan(cutoff);
+// 寫一筆 audit_log 紀錄此刪除動作（reason_code = 'AUDIT_LOG_RETENTION_PURGE'）
+```
+
+`reason_code` 須加進 ADR-0078 catalog seed（若漏）。
+
+### Task 8.3: 客戶權利請求 7 個工作日內處理 SLA
+
+per [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) 方案 D + 個資法第 13 條：當 `customer_requests` 表有 `status = 'pending'` 且 `created_at < NOW() - INTERVAL '5 business days'` 時，**寄信通知 admin**（用 Phase 4 新加 EmailAdapter / Resend），確保 7 個工作日內處理不超期。
+
+實作方式：在現有 anonymization cron 內加一段 — 掃 pending requests，若超過 5 個工作日仍 pending 則 alert admin。
+
+### Task 11: Resend 整合（per F-H3 B + ADR-0134）
+
+**對應**：[ADR-0134](../../adr/0134-better-auth-phase-1-security-configuration.md) #1 Better Auth magicLink 走 EmailAdapter（[ADR-0110](../../adr/0110-hexagonal-ports-and-adapters.md) §Exception 2 預示 Phase 4 加 `src/adapters/email/`，已落地 port skeleton）
+
+**Files:**
+- Create: `src/adapters/email/ResendEmailAdapter.ts`（concrete adapter；implements `EmailAdapter` from `src/adapters/email/index.ts`，Phase 4 已落地）
+- Create: `src/lib/email.ts`（factory + env reading）
+- Create: `src/emails/admin-invite.tsx`（React Email template）
+- Modify: `src/lib/auth.ts`（magicLink sendMagicLink callback 改呼 emailAdapter）
+- Modify: `package.json`（加 `resend` + `@react-email/components`）
+- Modify: `eslint-rules/no-platform-sdk-outside-adapter.mjs`（黑名單加 `resend`）
+- Modify: `.env.example`（加 `RESEND_API_KEY`）
+- DNS 設定（**Mike 大親自動**）：mail.rrms.pro080.com 加 SPF / DKIM / DMARC
+
+**Resend 整合具體流程**：見 [ADR-0134 §References](../../adr/0134-better-auth-phase-1-security-configuration.md) 列的官方文件 + Round-2 Q4 + Round-3 Q1 完整 flow chart（admin 邀請 → createUser + signInMagicLink + sendTransactional → 點 link → /admin/setup 強制設密碼）。
+
+### Task 12: vercel.ts buildCommand 加 secret 掃描（L5 — 對應原 Phase 5）
+
+**對應**：原 Phase 5 計畫的「Plan 2 Task 11 vercel.ts buildCommand 加 secret 掃描」整合進 Phase 4
+
+修 `vercel.ts`:
+```ts
+buildCommand: 'pnpm scan:bundle && pnpm build && gitleaks dir . --no-banner',
+```
+
+對應 spec §6.7.4 Layer 5 從 "Phase 2" 改 "Phase 1 啟用"（Phase 4 Additions 對應 spec 已修）。
+
+### Phase 4 Additions 驗收條件
+
+- [ ] anonymize cron 同 transaction 處理 5 表（user + cases + case_media + audit_log + outbox）— Playwright 整合測試 PASS
+- [ ] audit_log 7 年保留 cron 已註冊 + 手動觸發回 200
+- [ ] 客戶權利請求 SLA cron alert 已測試
+- [ ] Resend 整合：DNS verify 通過 + 寄測試信通過 mail-tester.com 達 9+/10 分（SPF / DKIM / DMARC）
+- [ ] Better Auth magicLink callback 改走 emailAdapter — 紅隊測試「直接 import resend」被 ESLint 擋下
+- [ ] 全部 mini-audit + audit:docs 全綠
 
 ---
 
