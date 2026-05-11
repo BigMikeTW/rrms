@@ -237,6 +237,7 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 **Deviation from plan**：原 plan 要求開 real PR + 等 Dependabot 偵測（24h）；改 local verify only — 紅隊 branch 不推 GitHub，因 Dependabot 只掃 default branch（main），feature branch 不會被偵測；Dependabot 本體驗證留待 Plan 2 PR merge 後 follow-up（24h 內手動觀察 https://github.com/BigMikeTW/rrms/security/dependabot）。
 
 **方法**：
+
 1. 建臨時 branch `red-team/dependabot-local-verify`（HEAD = `053c3c8`）
 2. `pnpm add lodash@4.17.20`（GHSA-35jh-r3h4-6jhm 等 CVE）
 3. `pnpm audit --audit-level=high --prod`（CI Dependency audit job 同腳本）
@@ -244,6 +245,7 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 5. `pnpm install --frozen-lockfile` 還原 node_modules
 
 **結果**：
+
 - exit code: `1`（FAIL，預期）
 - 偵測到 6 vulnerabilities：4 moderate + **2 high**
 - High 等級漏洞（兩條都指向 lodash @ `.>lodash`）：
@@ -251,11 +253,13 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
   2. **GHSA-r5fr-rjxr-66jc** — Code Injection via `_.template`（vulnerable `>=4.0.0 <=4.17.23`，patched `>=4.18.0`）
 
 **還原後 baseline 驗證**：
+
 - `pnpm audit --audit-level=high --prod` → exit 0，1 moderate（與 Task 3 baseline 一致）
 - `git status`：working tree 只剩 Task 7 遺留的 CRLF/LF 結尾正規化（與 Task 8 無關）
 - `git log -1`：HEAD 仍為 `053c3c8`（Plan 2 branch 對齊）✓
 
 **結論**：
+
 - ✅ CI `Dependency audit` job 確認可正確擋下 high+ CVE 套件（紅隊驗證通過，exit code 1 + 列出 high CVE）
 - ⏳ Dependabot 本體驗證留待 Plan 2 PR merge 後 24h 內手動觀察 GitHub Security tab
 
@@ -264,6 +268,7 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 ### Tasks 6 + 9: ZAP XSS 紅隊驗證（E2E real-PR，2026-05-11）
 
 **方法**：
+
 1. 建臨時 branch `red-team/zap-xss-verify`（從 Plan 2 branch 分出）；種一個故意有 reflected XSS 的 page `src/app/red-team-xss/page.tsx`（query param 直接 render 進 DOM，無跳脫）
 2. push + 開 PR #13（"RED TEAM: Plan 2 Task 9 ZAP XSS detection (do NOT merge)"）
 3. Vercel preview ready 後，`Security — ZAP baseline (PR)` workflow 自動觸發並對 preview URL 跑 ZAP baseline scan
@@ -272,6 +277,7 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 6. 清理：close issue → `gh pr close --delete-branch` → 回 Plan 2 branch → 刪 local red-team branch
 
 **結果**：
+
 - PR#: **13**（已 closed + remote/local branch deleted）
 - ZAP run: `25650110481`（workflow "CI Security — ZAP baseline (PR)"）
 - ZAP baseline scan job conclusion: **FAILURE**（`fail_action: true` + `WARN-NEW: 3` → exit code 非 0）
@@ -285,10 +291,12 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - 其他 CI jobs 副作用：CI workflow（gitleaks / ESLint+tsc / Client bundle scan / semgrep OWASP / Doc audit / Dependency audit / Ban drizzle-kit push）全 SUCCESS；Vercel preview SUCCESS
 
 **重要發現 / 限制**：
+
 - **ZAP baseline scan 是 passive-only**：它不主動注入 XSS payload，且只爬從首頁可達的連結。種的 `/red-team-xss` page 沒有從任何頁面連入，也沒進 sitemap，因此完全不在 spider scope 內 → ZAP **沒有**偵測到那個 reflected XSS。job 失敗是被無關的預設 WARN 規則觸發的。
 - 因此這次驗證**證明了 ZAP workflow 的 E2E 管線**（PR 觸發 → 對 preview 跑掃描 → 因 WARN 失敗 → 自動開 issue → fail PR check），但**沒有**證明「ZAP 會抓到我們程式碼裡的 XSS」這個更強的主張。要驗證後者需改用 ZAP **full scan**（active）並把目標 page 放進 spider 範圍或直接給 ZAP target URL。
 
 **結論**：
+
 - ✅ ZAP workflow E2E 管線通過（**同時涵蓋 Task 6 acceptance**：PR 上有 ZAP baseline scan job，失敗會 fail check 並自動建 issue）
 - ⚠️ ZAP baseline（passive）對「未連結頁面的 reflected XSS」無偵測能力 — 這是 baseline scan 的已知限制，非 workflow 設定問題；若需 active XSS 偵測應走 full scan
 - ✅ 清理完成（issue #14 closed、PR #13 closed + branch deleted、local red-team branch 已隨 `gh pr close --delete-branch` 移除、Plan 2 branch HEAD 仍 `12b77ae`、`git branch --list red-team/*` 空）
