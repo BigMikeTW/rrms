@@ -1,0 +1,95 @@
+# What:  GitHub Actions workflow running OWASP ZAP baseline scan against
+#        the Vercel preview deployment on every PR targeting `main`.
+#        Two stages: (1) inline poll Vercel's GitHub deployments until
+#        one reports `state=success` and exposes a target_url; (2) run
+#        `zaproxy/action-baseline@v0.15.0` against that URL using
+#        `.zap/rules.tsv` customizations. Auto-creates a GitHub issue on
+#        scan failure via the action's `allow_issue_writing` input.
+# Why:   Layer 4 dynamic security gate per spec §6.7.4 sixth scan
+#        (semgrep covers static; ZAP covers runtime). Phase 4's Layer 4
+#        already has gitleaks + ESLint+tsc + Client bundle scan + semgrep
+#        + Doc audit + Dependency audit + Ban drizzle-kit push (7
+#        contexts); this workflow adds an 8th (`ZAP baseline scan`)
+#        which becomes required via Plan 2 Task 10 branch-protection
+#        PUT. Inline `gh api deployments` polling replaces the legacy
+#        `patrickedqvist/wait-for-vercel-preview@v1.3.3` (4-year
+#        unupdated, Node 16 internal — fails 2026-06-02 deprecation)
+#        per Plan 2 Task 0 research and γ-2 F-19.
+# Where: Repo: `.github/workflows/security-zap-pr.yml`. Runs on
+#        GitHub-hosted `ubuntu-latest`. Vercel preview URL discovered via
+#        GitHub deployments REST API (no third-party action). ZAP report
+#        stored as workflow artifact; issue body links to it.
+# When:  Triggered on every `pull_request` open/synchronize against
+#        `main`. Does NOT run on push to feature branches (no Vercel
+#        preview generated for non-PR pushes by default Vercel setup).
+
+name: Security — ZAP baseline (PR)
+
+# Why: minimal permissions — read code, write issues for auto-report,
+# write PR comments for action's status message. Deployment read is
+# implicit in `contents: read`.
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  zap-baseline:
+    name: ZAP baseline scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Inline polling: query GitHub deployments REST API for a
+      # successful Vercel preview matching this PR's head SHA. Polls
+      # every 10s up to 10min. Replaces `patrickedqvist/wait-for-vercel-
+      # preview@v1.3.3` per Plan 2 Task 0 research + γ-2 F-19.
+      - name: Wait for Vercel preview
+        id: vercel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            # Find a Vercel deployment for this PR head SHA
+            deployment_id=$(gh api \
+              "repos/${{ github.repository }}/deployments?sha=${HEAD_SHA}" \
+              --jq '.[] | select(.environment | test("Preview"; "i")) | .id' \
+              | head -n 1)
+            if [ -n "$deployment_id" ]; then
+              # Check latest status
+              status_json=$(gh api \
+                "repos/${{ github.repository }}/deployments/${deployment_id}/statuses?per_page=1" \
+                --jq '.[0]')
+              state=$(echo "$status_json" | jq -r '.state // empty')
+              target_url=$(echo "$status_json" | jq -r '.target_url // empty')
+              echo "attempt=$attempt deployment=$deployment_id state=$state url=$target_url"
+              if [ "$state" = "success" ] && [ -n "$target_url" ]; then
+                echo "url=$target_url" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              if [ "$state" = "failure" ] || [ "$state" = "error" ]; then
+                echo "::error::Vercel deployment failed: ${target_url:-no URL}"
+                exit 1
+              fi
+            fi
+            sleep 10
+          done
+          echo "::error::Vercel preview did not become ready within 10 minutes"
+          exit 1
+
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: ${{ steps.vercel.outputs.url }}
+          rules_file_name: ".zap/rules.tsv"
+          fail_action: true
+          allow_issue_writing: true
+          issue_title: "[Security] ZAP baseline scan failed on PR #${{ github.event.pull_request.number }}"

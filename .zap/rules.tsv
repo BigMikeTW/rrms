@@ -1,0 +1,23 @@
+# What:  ZAP baseline-scan rule customization for RRMS. Each row tunes a
+#        specific ZAP plugin's failure threshold for our context.
+# Why:   Default ZAP baseline reports CSP / Permissions-Policy header
+#        absence as fail — Phase 1 RRMS hasn't yet added those headers
+#        (Phase 2 work per spec §6.7.5). Treating them as IGNORE prevents
+#        unrelated Phase 2 work from blocking every PR. Allow-list is
+#        deliberately small; any new IGNORE entry requires a brief
+#        comment justifying scope.
+# Where: Loaded by `.github/workflows/security-zap-pr.yml` and
+#        `.github/workflows/security-zap-daily.yml` via the
+#        `zaproxy/action-baseline@v0.15.0` action's `rules_file_name`
+#        input. Path: `.zap/rules.tsv` (action default).
+# When:  Active on every PR open/update (PR workflow) and every weekday
+#        02:00 Asia/Taipei (daily workflow).
+#
+# Schema: ZAP rule TSV — three tab-separated columns. Sources:
+#   https://www.zaproxy.org/docs/alerts/
+#   https://github.com/zaproxy/action-baseline (rules_file_name)
+#
+# Plugin ID	Threshold	Description
+10038	IGNORE	# CSP header missing — Phase 2 work per spec §6.7.5
+10063	IGNORE	# Permissions-Policy header missing — Phase 2 work
+10009	WARN	# In-page banner information leak — warn, do not fail
