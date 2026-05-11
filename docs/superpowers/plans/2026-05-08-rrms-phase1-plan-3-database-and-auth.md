@@ -6,7 +6,7 @@
 
 **Goal:** 建立 Postgres 資料庫（Neon via Vercel Marketplace）、Drizzle ORM、RRMS 業務 6 張表 + Better Auth 4 張核心表（共 10 張）schema、Better Auth 三 provider 登入（Email/密碼 + Google + LINE Login via Generic OAuth）、admin 帳號邀請（magicLink plugin）與管理流程（admin plugin），以及 cookie / session 安全強化（HttpOnly + Secure + SameSite=Lax）。Phase 1 結束時 schema 還會被 Plan 4 加 `rate_limit_buckets`、Plan 7 加 `oa_conversations` + `customer_requests`，最終 13 張表（不在本計畫範圍）。
 
-**Architecture:** Drizzle 直接匯出 TypeScript schema；Better Auth 走 `drizzleAdapter`；Email/密碼用 `emailAndPassword`（內建 scrypt，無 bcrypt 依賴）；Google 走內建 `socialProviders.google`；LINE Login 走 `genericOAuth` plugin 配 OIDC discovery；session DB token + HttpOnly cookie；middleware 在 `/admin/*` 強制 auth + role-based 授權（admin plugin）。
+**Architecture:** Drizzle 直接匯出 TypeScript schema；Better Auth 走 `drizzleAdapter`；Email/密碼用 `emailAndPassword`（內建 scrypt，無 bcrypt 依賴）；Google 走內建 `socialProviders.google`；LINE Login 走 `genericOAuth` plugin 配 OIDC discovery；session DB token + HttpOnly cookie；proxy（Next.js 16 — `src/proxy.ts`）在 `/admin/*` 強制 auth + role-based 授權（admin plugin）。
 
 **Tech Stack:**
 - `drizzle-orm@0.45.2`（exact pin；pre-1.0，禁 caret 以免 schema 漂移）
@@ -63,7 +63,7 @@ src/
 │   │   └── page.tsx                   # magicLink callback 著陸頁（自動 sign-in）
 │   └── login/
 │       └── page.tsx
-└── middleware.ts                       # /admin/* auth guard
+└── proxy.ts                            # /admin/* auth guard（Next.js 16 — 舊名 middleware.ts）
 
 drizzle/
 ├── 0000_initial.sql                    # 第一次 migration
@@ -579,7 +579,7 @@ vercel env add BETTER_AUTH_URL preview       # 填 Vercel 給的 preview domain 
  *        (spec 4.3). Centralises cookie hardening (spec 6.7.3) and role-based
  *        access (spec 6.7.4). Replaces Auth.js v5 per maintainership transfer.
  * Where: Consumed by app/api/auth/[...all]/route.ts, server components needing
- *        `auth.api.getSession`, server actions, and middleware.ts.
+ *        `auth.api.getSession`, server actions, and proxy.ts.
  * Sources: https://www.better-auth.com/docs/installation
  *          https://www.better-auth.com/docs/adapters/drizzle
  *          https://www.better-auth.com/docs/concepts/session-management
@@ -679,21 +679,22 @@ import { toNextJsHandler } from "better-auth/next-js";
 export const { POST, GET } = toNextJsHandler(auth);
 ```
 
-- [ ] **Step 6：建立 `src/middleware.ts`**
+- [ ] **Step 6：建立 `src/proxy.ts`**（Next.js 16 — 舊名 `middleware.ts`，v16.0.0 已重新命名為 `proxy.ts`）
 
 ```ts
 /**
- * What:  Edge middleware guarding /admin/* routes; redirects unauthenticated
- *        requests to /login.
- * Why:   Defence-in-depth: page-level guards (Task 13) plus middleware-level
+ * What:  Next.js 16 proxy (formerly "middleware" before v16.0.0) guarding
+ *        /admin/* routes; redirects unauthenticated requests to /login.
+ * Why:   Defence-in-depth: page-level guards (Task 13) plus proxy-level
  *        block ensures no admin route renders without a session cookie
  *        (spec 6.7.4 layered security).
- * Where: Runs before any /admin/* request reaches App Router.
- * When:  Per-request at the Edge runtime.
+ * Where: Runs before any /admin/* request reaches App Router. Filename
+ *        `src/proxy.ts` per Next.js 16 v16.0.0 file convention.
+ * When:  Per-request at the edge.
  */
 import { NextResponse, type NextRequest } from "next/server";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   // Better Auth default cookie name: "better-auth.session_token" (or
   // "__Secure-better-auth.session_token" in production with the Secure prefix).
   const cookie =
@@ -713,13 +714,13 @@ export const config = {
 };
 ```
 
-> 註：middleware 只看 cookie 是否存在，不在 Edge 解 session（Better Auth session 驗證需要 DB 查詢，Edge runtime 對 Neon driver 支援有限）。真正的 session 驗證交給 server component 與 server action 用 `auth.api.getSession({ headers })`。這就是「兩層防」：middleware 擋掉沒 cookie 的 attacker，server 層驗 cookie 是否真有效 + role。
+> 註：proxy 只看 cookie 是否存在，不在 proxy 解 session（Better Auth session 驗證需要 DB 查詢；Phase 1 刻意保持 proxy DB-free）。真正的 session 驗證交給 server component 與 server action 用 `auth.api.getSession({ headers })`。這就是「兩層防」：proxy 擋掉沒 cookie 的 attacker，server 層驗 cookie 是否真有效 + role。
 
 - [ ] **Step 7：commit**
 
 ```powershell
 git add .
-git commit -m "feat(auth): install Better Auth with Drizzle adapter + middleware"
+git commit -m "feat(auth): install Better Auth with Drizzle adapter + proxy"
 ```
 
 ---
@@ -1077,7 +1078,7 @@ git commit -m "feat(auth): admin invitation via magicLink + admin plugin"
 /**
  * What:  Layout that authenticates every /admin/* request and renders the
  *        shared admin chrome (nav + signout).
- * Why:   Page-level auth guard is the second layer behind middleware
+ * Why:   Page-level auth guard is the second layer behind the proxy
  *        (spec 6.7.4 layered defence). Also gates the "帳號管理" link on
  *        admin role.
  * Where: Wraps every page under app/admin/. Calls auth.api.getSession
@@ -1366,7 +1367,7 @@ test("auth session cookie is HttpOnly and inaccessible to JS", async ({
  *        only pages and that anonymous requests to admin server actions
  *        are rejected with 401/403/404.
  * Why:   Spec 6.7.4 role-based access. Direct URL access bypasses nav-link
- *        gating, so the layout/page guard plus middleware must stop it.
+ *        gating, so the layout/page guard plus proxy must stop it.
  * Where: __tests__/auth/. Uses Playwright form login + raw request fixture.
  * When:  CI on every PR + pre-merge.
  */
@@ -1429,7 +1430,7 @@ git commit -m "test(security): red-team auth — cookie HttpOnly + privilege esc
 - ✅ 命名一致：Better Auth 預設表名 `user`/`session`/`account`/`verification` + RRMS 表 `cases` etc.
 - ✅ 4W comments on every code sample per `docs/CODING_STANDARDS.md`
 - ⚠️ Resend / 真正寄邀請信延後到 Plan 8（cutover），Phase 1 先 server log 顯示連結
-- ⚠️ Edge middleware 只看 cookie 存在；server-side `auth.api.getSession` 才驗有效性 + role（兩層防）
+- ⚠️ proxy（`src/proxy.ts`）只看 cookie 存在；server-side `auth.api.getSession` 才驗有效性 + role（兩層防）
 
 ---
 
@@ -1623,9 +1624,9 @@ ALTER TABLE cases FORCE ROW LEVEL SECURITY;  -- 連 owner 也擋（per Bytebase 
 
 ---
 
-### Task 7.5: tenant context proxy（Next.js 16 — `proxy.ts` 而非 `middleware.ts`）
+### Task 7.5: tenant context proxy（Next.js 16 — `proxy.ts`；舊版稱 `middleware.ts`）
 
-**對應**：ADR-0017；Round-2 確認 Next.js 16 已將 `middleware` 改名為 `proxy`（v16.0.0）
+**對應**：ADR-0017；Round-2 確認 Next.js 16 v16.0.0 已將舊版 `middleware.ts`（檔案與概念）重新命名為 `proxy.ts`；本專案一律使用 `proxy.ts`，不再用舊名
 
 **Files:**
 - Create: `src/proxy.ts`（Phase 1 default tenant；Phase 2 加 subdomain 解析）
@@ -1640,7 +1641,7 @@ ALTER TABLE cases FORCE ROW LEVEL SECURITY;  -- 連 owner 也擋（per Bytebase 
 - Phase 2：實際 subdomain → tenant 查表 + Vercel KV / Upstash cache
 
 **tenant-context.ts 設計**：
-- 用 React `cache()` 包 `headers().get('x-tenant-id')` — Next.js 官方推薦 RSC pattern（per Round-2 Q4），不用 AsyncLocalStorage（middleware ↔ handler 不通；per GitHub issue #69298）
+- 用 React `cache()` 包 `headers().get('x-tenant-id')` — Next.js 官方推薦 RSC pattern（per Round-2 Q4），不用 AsyncLocalStorage（proxy ↔ handler 不通；per GitHub issue #69298）
 - `getCurrentTenantId(): string` — throws if missing
 - `getRepositories(): Repositories` — factory: `makeRepositories(db, tenantId)`
 

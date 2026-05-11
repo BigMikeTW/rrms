@@ -13,9 +13,12 @@
  *           Status field (Proposed / Accepted / Superseded by / Deprecated)
  *           and consistent Supersedes ⇄ Superseded-by chain (mutual link).
  *        3. Deprecated-term scan — `Auth.js`, `NEXTAUTH_SECRET`,
- *           `@auth/drizzle-adapter`, `argon2`, `users.id`, `@/auth/auth`
- *           must not appear AS PRESCRIPTIVE GUIDANCE in active spec / plans
- *           (research/ + ADRs may reference them as historical context).
+ *           `AUTH_SECRET`, `@auth/drizzle-adapter`, `argon2`, `users.id`,
+ *           `@/auth/auth`, `middleware.ts` (renamed `proxy.ts` in Next.js 16
+ *           per ADR-0001) must not appear AS PRESCRIPTIVE GUIDANCE in active
+ *           spec / plans (research/ + ADRs may reference them as historical
+ *           context; the HISTORICAL_CONTEXT_PATTERNS allow-list exempts lines
+ *           that explain the rename rather than prescribe the old name).
  *        4. Package-version drift — versions named in spec / plans (e.g.
  *           "Drizzle 0.45.2", "Next.js 16.x") must match package.json's
  *           actual installed range.
@@ -349,6 +352,7 @@ const DEPRECATED_TERMS = [
   [/\bargon2\b/g, "scrypt (Better Auth built-in)"],
   [/users\.id\b/g, "user.id (Better Auth singular table)"],
   [/@\/auth\/auth/g, "@/lib/auth"],
+  [/\bmiddleware\.ts\b/g, "proxy.ts (Next.js 16 rename per ADR-0001)"],
 ];
 
 // Allow-list: lines that mention deprecated terms in CONTEXTUAL / HISTORICAL
@@ -383,6 +387,16 @@ const HISTORICAL_CONTEXT_PATTERNS = [
   /跟 Auth\.js/, // "跟 Auth.js" (Chinese comparison particle)
   /與 Auth\.js/, // "與 Auth.js"
   /和 Auth\.js/, // "和 Auth.js"
+
+  // Next.js 16 `middleware.ts` → `proxy.ts` rename explanation (legitimate
+  // historical reference: a line that mentions BOTH the old `middleware.ts`
+  // name AND the new `proxy.ts` name, OR ties `middleware.ts` to a rename
+  // verb — i.e. it is explaining the rename, not prescribing the old name).
+  /middleware\.ts\b.*\bproxy\.ts\b/i,
+  /\bproxy\.ts\b.*middleware\.ts\b/i,
+  /middleware\.ts\b.*(?:重新命名|改名|舊名|舊版|formerly|renamed|而非|rename)/i,
+  /(?:重新命名|改名|舊名|舊版|formerly|renamed|rename).*middleware\.ts\b/i,
+  /Next\.?js ?16.*middleware\.ts\b/i,
 
   // Banners that explicitly mark a doc / section as historical
   /historical document/i,

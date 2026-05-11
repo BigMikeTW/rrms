@@ -11,7 +11,7 @@ Why:   使用者 2026-05-10 明示判準：「以架構完整性 + 資安為邊�
        - F-M1：Hexagonal Phase 1 補骨架（採 A 最嚴謹）
        - F-M2：Audit log 完整版 Phase 1 補做（採 A 強化）
        - F-M3：Event Stream + jsonb 預留（採 A 部分）
-       - F-M4：multi-tenant Level 3 (schema + middleware + repository + ESLint rule)
+       - F-M4：multi-tenant Level 3 (schema + proxy + repository + ESLint rule)
        - F-L2/L3/L4：小修
        - 額外：ADR 系統 + 文件結構重構 + 4 招文件債緩解
 Where: docs/superpowers/plans/。本檔為 Phase 1-5 的 master plan，Phase 5 內的
@@ -42,7 +42,7 @@ When:  2026-05-10 寫入；預估 4-6 週逐 phase 執行。每 phase 完成後�
 |---|---|
 | Hexagonal architecture（brainstorm F7-F11）| `src/adapters/` + 5 個 adapter interface + ESLint 強制 rule |
 | 全系統 Audit Trail（brainstorm D2-D4, D8, D9, D13）| `audit_log` 表 + Postgres trigger 強制 append-only + Change Reason Catalog |
-| Multi-tenant Level 3 預留（brainstorm A17, E1, F3-F6）| schema 全表帶 `tenant_id NOT NULL` + tenant context middleware + repository pattern + ESLint rule |
+| Multi-tenant Level 3 預留（brainstorm A17, E1, F3-F6）| schema 全表帶 `tenant_id NOT NULL` + tenant context proxy（`src/proxy.ts`）+ repository pattern + ESLint rule |
 | AI 三道地基預留（brainstorm C8）| Event Stream（用 audit_log + LISTEN/NOTIFY）+ jsonb 欄位預留 + change_reason_catalog |
 | Resend 整合（F-H3）| Phase 1 啟用，admin magic-link 邀請信走 Resend，不再手動貼連結 |
 | Vercel Pro 文件化（F-H2、brainstorm A14, H1）| spec / Plan 1 / Plan 8 / memory 全部標明 |
@@ -269,7 +269,7 @@ When:  2026-05-10 寫入；預估 4-6 週逐 phase 執行。每 phase 完成後�
   - Task 6.5：`audit_log` 表 + Postgres trigger 強制 append-only
   - Task 6.6：`change_reason_catalog` 表 + Phase 1 種子資料
   - Task 6.7：所有業務表加 `tenant_id UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001'`
-  - Task 7.5：tenant context middleware（Edge runtime；解 subdomain 注入 `currentTenantId`）
+  - Task 7.5：tenant context proxy（`src/proxy.ts`；解 subdomain 注入 `currentTenantId`）
   - Task 8.5：repository pattern（`src/db/repositories/*.ts`，所有 db query 過 repo、自動帶 tenant filter）
   - Task 8.6：ESLint rule `no-direct-db-query`：禁 `src/app/**`、`src/lib/**` 直接 import `@/db/client`，必須過 `@/db/repositories/*`
   - Task 14.5：紅隊 — Playwright 跨租戶資料隔離測試
@@ -298,9 +298,9 @@ When:  2026-05-10 寫入；預估 4-6 週逐 phase 執行。每 phase 完成後�
 ### Phase 4 驗收條件
 
 - [ ] schema 改完 `pnpm db:generate` 產出 migration
-- [ ] tenant context middleware + repository pattern 寫好
+- [ ] tenant context proxy（`src/proxy.ts`）+ repository pattern 寫好
 - [ ] ESLint rule 抓得到違規 fixture
-- [ ] Playwright 跨租戶測試 PASS（Phase 1 預設只有 default tenant，但 middleware + repository 能正確過濾）
+- [ ] Playwright 跨租戶測試 PASS（Phase 1 預設只有 default tenant，但 proxy + repository 能正確過濾）
 - [ ] `pnpm audit:docs` 通過
 
 ---
