@@ -300,3 +300,27 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - ✅ ZAP workflow E2E 管線通過（**同時涵蓋 Task 6 acceptance**：PR 上有 ZAP baseline scan job，失敗會 fail check 並自動建 issue）
 - ⚠️ ZAP baseline（passive）對「未連結頁面的 reflected XSS」無偵測能力 — 這是 baseline scan 的已知限制，非 workflow 設定問題；若需 active XSS 偵測應走 full scan
 - ✅ 清理完成（issue #14 closed、PR #13 closed + branch deleted、local red-team branch 已隨 `gh pr close --delete-branch` 移除、Plan 2 branch HEAD 仍 `12b77ae`、`git branch --list red-team/*` 空）
+
+### Task 11: vercel.ts Layer 5 bundle secret scan（2026-05-11）
+
+**Deviation from plan**：原 plan buildCommand 含 `pnpm install --frozen-lockfile` + `gitleaks dir .`；改為 `pnpm build && pnpm scan:bundle`：
+
+- Vercel pipeline 已自動 install（lockfile）→ 不重複
+- gitleaks 是 Go binary、Vercel build image 沒裝；source-file scan 已由 L4 CI gitleaks required check 覆蓋；L5 邊際價值 = bundle scan
+
+**變更**：
+
+- `vercel.ts` 加 `buildCommand: 'pnpm build && pnpm scan:bundle'` + 更新 4W What/Why（含說明為何不含 install / gitleaks）
+- spec §6.7.4：
+  - 原則行「**Phase 1 必做 L1 + L2 + L4**；L3、L5 為 Phase 2 補強。」→「**Phase 1 必做 L1 + L2 + L4 + L5**；L3 為 Phase 2 補強。」
+  - Layer 5 標題「##### Layer 5：Vercel build check（Phase 2）」→「##### Layer 5：Vercel build check（Phase 1 啟用）」；目的句「`vercel.ts` 的 `buildCommand` 中加入掃描，scan fail → build fail → 不部署。Phase 2 補齊。」→「`vercel.ts` 的 `buildCommand` 設為 `pnpm build && pnpm scan:bundle`，scan fail → build fail → 不部署。Phase 1 啟用（Plan 2 Task 11）。」
+
+**紅隊驗證（local-only，不開 PR）**：
+
+- 臨時 branch `red-team/l5-bundle-secret-verify` + 種 `src/app/red-team-l5-leak/page.tsx`（client component，內含 Dropbox-token-shaped literal `sl.ABCDEF...0123456789`，64 chars）
+- `pnpm build` SUCCESS（route `/red-team-l5-leak` 出現在 build output）
+- `pnpm scan:bundle` → exit **2**，stderr：`LEAK: Dropbox token in .next\static\chunks\12e6y7hxj_8cv.js` + `1 potential secret leak(s) found in client bundle.`
+- 結論：✅ Layer 5 scan 確認可偵測 bundle secret（vercel.ts buildCommand 即透過此 exit 2 abort Vercel deploy）
+- 清理：`git checkout -- .` + `git clean -fd src/app/red-team-l5-leak` + 切回 Plan 2 branch + `git branch -D red-team/l5-bundle-secret-verify`；另刪除紅隊 build 後殘留的 `.next/`（含 stale `.next/types/validator.ts` 引用已刪頁面，會讓 pre-commit `tsc --noEmit` fail）；無紅隊 commit 進 Plan 2 PR；`git branch --list red-team/*` 空
+
+commit SHA: a3c02de（vercel.ts + spec）
