@@ -332,3 +332,13 @@ commit SHA: a3c02de（vercel.ts + spec）
 - `scripts/audit-docs.mjs`：DEPRECATED_TERMS 加 `[/middleware\.ts/g, "proxy.ts (Next.js 16 rename per ADR-0001)"]`；HISTORICAL_CONTEXT_PATTERNS 加 5 條精準豁免（line 提到 `middleware.ts` + `proxy.ts` 並列、或 `middleware.ts` 搭配 重新命名/改名/舊名/舊版/formerly/renamed/而非/rename、或 `Next.js 16` 搭配 `middleware.ts`）；更新 file-level 4W docstring「Deprecated-term scan」段加入 `middleware.ts` 與豁免說明
 - `pnpm audit:docs` PASS（0 errors / 0 warnings）
 - commit SHA（sweep）: eb8546e
+
+### γ-2 rest (F-06/F-09/F-13/F-15/F-19)（2026-05-11）
+
+- F-06: `src/adapters/README.md` Phase 1 status 表加 cache + email 兩列（cache → `cache/index.ts` + `cache/InMemoryCacheAdapter.ts`，Phase 1 active，per ADR-0110 + Phase 4 finding #4 Vercel KV 停售改 in-memory；email → `email/index.ts`，port-only，concrete adapter ResendEmailAdapter 在 Plan 4/8，per ADR-0110 + ADR-0134 Resend 提前 Phase 1）；對照 `src/adapters/` 目錄確認列名正確。注意 audit-docs 不掃 `src/`，此改動不觸發任何 check
+- F-09: ADR-0089 Related ADR `ADR-0017, ADR-0067, ADR-0076` → 加 `ADR-0077, ADR-0133` + 加 `## Amendments` 段（4 欄 row）；ADR-0017 Related ADR `ADR-0003, ADR-0016, ADR-0019` → 加 `ADR-0089, ADR-0133` + 加 `## Amendments` 段（4 欄 row）；per ADR-0000 Amendment Policy（cross-link 屬允許 amendment）；兩 ADR 的 Decision 段均未動
+- F-13: ci.yml `drizzle-push-ban` job grep `--include` 加 `--include='*.yml' --include='*.yaml'` + 加 `--exclude=ci.yml`（避免 self-match error-message string）+ 更新 job-level Why 註解與 step 內 inline 註解使其與實作一致
+- F-15: ci.yml `semgrep` container image `semgrep/semgrep:1.86.0` → `semgrep/semgrep:1.162.0`（Task 0 version research：1.86.0 落後約 76 minor releases）；未本機跑 semgrep（Docker container，本機無）；ruleset 變化若在 Plan 2 PR CI semgrep OWASP job 產生 false positive，後續加 `.semgrepignore` 或 rule exception 處理
+- F-19: ci.yml `actions/setup-node@v4` → `actions/setup-node@v6`（4 處：lint-and-types / bundle-scan / doc-audit / dependency-audit）；Node 20 runtime 2026-06-02 deprecated（Task 0 research）；`pnpm/action-setup@v4` / `actions/checkout@v6` 未動（research 確認 current）；`gitleaks/gitleaks-action@v2` 未動（research 標 P2 known-risk follow-up，本 PR 不處理）；`node-version: 22` 維持不變
+- `pnpm audit:docs` / `pnpm typecheck` / `pnpm lint` 全 PASS（pre-commit prettier 把 ADR / README 表格 reformat，重跑 audit:docs 仍 PASS）
+- commit SHA（fixes）: 80bd532
