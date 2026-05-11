@@ -214,3 +214,12 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - 4W 完整；引 spec §6.7.4 + γ-2 F-19
 - commit SHA (workflow): 89df91a
 - commit SHA (research log): (this commit)
+
+### Task 5: Daily ZAP scan（2026-05-11）
+
+- `.github/workflows/security-zap-daily.yml` 建立
+- cron: `0 18 * * *` (18:00 UTC = 02:00 Asia/Taipei)
+- workflow_dispatch 加入（manual trigger 備援）
+- target: `https://rrms-black.vercel.app`（Plan 8 DNS 換 rrms.pro080.com 時再改）
+- 跳過 plan 原 Step 2 手動觸發測試（PR merge 後使用者自行 trigger 驗證）
+- commit SHA: c15aaec
