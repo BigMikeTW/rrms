@@ -26,13 +26,13 @@ When:  Consulted whenever any Layer 4 alert fires (Dependabot, npm
 
 ## 事件分類
 
-| 類別 | 範例 | 嚴重度 |
-|---|---|---|
-| **A. 套件漏洞 (CVE)** | Dependabot alert / `Dependency audit` job 報 high+ | low – critical |
-| **B. 動態掃描警告** | `Security — ZAP daily` 或 PR ZAP scan 報 high+ | high |
-| **C. 認證 / 授權異常** | 後台被未授權存取、cookie 被盜、Better Auth advisory（per ADR-0134 #5 偵測） | critical |
-| **D. 資料外洩疑慮** | DB 誤刪、客戶反映看到別人資料、log 含個資、audit_log 寫入失敗 | critical |
-| **E. 服務不可用** | Vercel 部署失敗、Neon DB 連線異常 | medium-high |
+| 類別                   | 範例                                                                        | 嚴重度         |
+| ---------------------- | --------------------------------------------------------------------------- | -------------- |
+| **A. 套件漏洞 (CVE)**  | Dependabot alert / `Dependency audit` job 報 high+                          | low – critical |
+| **B. 動態掃描警告**    | `Security — ZAP daily` 或 PR ZAP scan 報 high+                              | high           |
+| **C. 認證 / 授權異常** | 後台被未授權存取、cookie 被盜、Better Auth advisory（per ADR-0134 #5 偵測） | critical       |
+| **D. 資料外洩疑慮**    | DB 誤刪、客戶反映看到別人資料、log 含個資、audit_log 寫入失敗               | critical       |
+| **E. 服務不可用**      | Vercel 部署失敗、Neon DB 連線異常                                           | medium-high    |
 
 ## 各類別處理流程
 
@@ -86,16 +86,16 @@ When:  Consulted whenever any Layer 4 alert fires (Dependabot, npm
 
 當需要輪替 secret 時依序處理；每次輪替須寫一筆 audit_log（per ADR-0076 + ADR-0078 reason_code = `SECRET_ROTATED`）：
 
-| Secret | 輪替方式 | 影響 |
-|---|---|---|
+| Secret                                                                 | 輪替方式                                                                                  | 影響                                                    |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `DATABASE_URL`（含 3 個 role per ADR-0089 / Plan 3 Phase 4 Additions） | Neon dashboard 重設密碼 → 更新 Vercel env（`DATABASE_URL_OWNER` / `_MIGRATION` / `_APP`） | 觸發重新部署、新 connection；舊 connection 立即 invalid |
-| `BETTER_AUTH_SECRET` | 自行生成 32 字元 random → 更新 Vercel env | 所有現有 session 失效；使用者需重新登入 |
-| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` | LINE Developers Console reissue | 推播暫斷直到 token 更新；舊 token 30 分鐘內失效 |
-| `LINE_MESSAGING_CHANNEL_SECRET` | LINE Developers Console reissue | webhook 簽章驗證會用新 secret |
-| `DROPBOX_REFRESH_TOKEN` | Dropbox App Console revoke + 重新 OAuth | 媒體上傳暫停，需在後台重綁 |
-| `GOOGLE_CLIENT_SECRET` | Google Cloud Console reset | Google 登入暫停直到更新 |
-| `LINE_LOGIN_CHANNEL_SECRET` | LINE Developers Console reissue | LINE 登入暫停直到更新 |
-| `RESEND_API_KEY`（Phase 4 提前到 Phase 1） | Resend Dashboard rotate | 系統信暫停直到更新 |
+| `BETTER_AUTH_SECRET`                                                   | 自行生成 32 字元 random → 更新 Vercel env                                                 | 所有現有 session 失效；使用者需重新登入                 |
+| `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`                                  | LINE Developers Console reissue                                                           | 推播暫斷直到 token 更新；舊 token 30 分鐘內失效         |
+| `LINE_MESSAGING_CHANNEL_SECRET`                                        | LINE Developers Console reissue                                                           | webhook 簽章驗證會用新 secret                           |
+| `DROPBOX_REFRESH_TOKEN`                                                | Dropbox App Console revoke + 重新 OAuth                                                   | 媒體上傳暫停，需在後台重綁                              |
+| `GOOGLE_CLIENT_SECRET`                                                 | Google Cloud Console reset                                                                | Google 登入暫停直到更新                                 |
+| `LINE_LOGIN_CHANNEL_SECRET`                                            | LINE Developers Console reissue                                                           | LINE 登入暫停直到更新                                   |
+| `RESEND_API_KEY`（Phase 4 提前到 Phase 1）                             | Resend Dashboard rotate                                                                   | 系統信暫停直到更新                                      |
 
 ## 演練
 
