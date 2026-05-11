@@ -13,15 +13,13 @@
 
 ADR-0076 立 audit_log append-only；ADR-0077 立 13 mandatory fields（含 `who uuid` actor）。這引發一個核心法律張力：
 
-- **業務面**：audit log 須長期保留以滿足 ISO 27001 A.8.15「protected against unauthorized changes」+ 內稽 / 法遵 / 商業會計法第 38 條（憑證保存 5 年）+ 民法第 125 條（請求權時效 15 年）
+- **業務面**：audit log 須長期保留以滿足 ISO 27001 A.8.15「protected against unauthorized changes」+ 內稽 / 法遵 / 商業會計法第 38 條（憑證 5 年、會計帳簿與財務報表 10 年）+ 民法第 125 條（請求權時效 15 年）
 - **法律面**：當 user 表 PII 到期匿名化（per ADR-0088 reporter PII 結案翌日起 2 年），audit_log 內的 `who uuid` 仍 reference 該 user_id — 此 UUID 是否仍屬個資？
 
-Round-3 PDPA 法理 deep-dive（2026-05-11）用台灣最高法源驗證得出明確結論：**仍屬個資**。
+Round-3 PDPA 法理 deep-dive（2026-05-11）以憲法法庭判例 + 國際匿名化標準 + 個資法施行細則 + 學界共識為核心法源組合，得出 RRMS 對 audit log `who` UUID 採「**保守視為個資**」立場（即使主管機關未明確背書「不問還原難易度」絕對說，憲法法庭「侵害非完全消滅」立場 + NIST 真匿名化標準 + 學界 pseudonymization 共識仍要求採真匿名化處理）。
 
 | 法源 | 結論 |
 |---|---|
-| 法務部 法律字第 10303513040 號 (2014/11/17) | 「客觀上仍有還原可能即仍屬個資，**不問還原難易度**」 |
-| 法務部 法律字第 10603512680 號 (2017/11/10) | 同前原則 |
 | 憲法法庭 111 年憲判字第 13 號（2022/8/12 健保案） | 代碼化措施僅「**大幅降低**侵害」非完全消滅；憲法法庭創設「**資料停止利用權**」 |
 | NIST SP 800-188 (2023 final) | 「Anonymization 必須**不可逆銷毀**所有 links between de-identified datasets and original datasets」— RRMS 保留 UUID = 未銷毀映射 = pseudonymization 不是 anonymization |
 | 個資法施行細則第 21 條 | 業務必須例外只有 4 個窄門：(1) 法令保存期限 (2) 契約約定 (3) 刪除侵害當事人利益 (4) 其他正當事由 — **內部稽核 / ISO 27001 不直接構成例外** |
@@ -114,10 +112,8 @@ spec §6.1 隱私告知聲明明文補上：
 - 個人資料保護法第 13 條（行使權利處理期限 30 日 / 必要時延長 30 日）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050021&flno=13
 - 個人資料保護法施行細則第 12 條第 2 項第 10 款: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
 - 個人資料保護法施行細則第 21 條（業務必須例外）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=21
-- 商業會計法第 38 條（憑證保存 5 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=J0080009&flno=38
+- 商業會計法第 38 條（會計憑證至少保存 5 年；會計帳簿及財務報表至少 10 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=J0080009&flno=38
 - 民法第 125 條（請求權時效 15 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=125
-- 法務部 法律字第 10303513040 號 (2014/11/17): https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5
-- 法務部 法律字第 10603512680 號 (2017/11/10): https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5
 - 憲法法庭 111 年憲判字第 13 號（2022/8/12 健保案）: https://cons.judicial.gov.tw/docdata.aspx?fid=38&id=309956
 - NIST SP 800-188 De-Identification of Personal Information: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-188.pdf
 - ISO/IEC 20889:2018 Privacy enhancing data de-identification techniques: https://www.iso.org/standard/69373.html
@@ -129,3 +125,10 @@ spec §6.1 隱私告知聲明明文補上：
 - 蔡柏毅〈淺談個資去識別化與合理利用間之平衡〉金融聯合徵信第 39 期: https://www.jcic.org.tw/main_ch/fileRename/fileRename.aspx?fid=1190&kid=1
 - 〈匿名化或假名化？資料去識別化之概念釐清〉hsu.legal: https://hsu.legal/article/58
 - 研究員 Round-3 PDPA 法理深挖紀錄（本 session 2026-05-11；非 commit 檔，已內嵌於本 ADR Context 段）
+- 研究員 Round-4 法源 evidence verification 紀錄（2026-05-11 session 內；觸發本 ADR Amendment）
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Phase 4 hotfix) | Round-4 evidence verification（2026-05-11 獨立研究員）發現原 Context 表中「法務部 法律字第 10303513040 號（2014/11/17）」於 [mojlaw.moj.gov.tw](https://mojlaw.moj.gov.tw/LawContentList.aspx?type=E&kw=10303513040) 站內字號搜尋回傳「資料錯誤」、無此函釋條目；原引第三方 URL（`id=FE304775`）實際指向「法律字第 10603512680 號（2017/11/10）」，且該 2017 函釋採「呈現方式說」立場（逐字：「依其呈現方式已無從直接或間接識別該特定個人者，即非屬個人資料」），與原 ADR 引用方向「客觀上仍有還原可能即仍屬個資、不問還原難易度」**相反**。為避免錯引在日後合規審計時動搖論證鏈；Decision 段（4 方案 A+B+C+D + 7 年保留 + 真匿名化）由憲法法庭 111 憲判字第 13 號 + NIST SP 800-188 + 個資法施行細則第 21 條 + 學界共識獨立支撐，政策**不動**。同時補商業會計法第 38 條漏列第 2 項「會計帳簿及財務報表至少保存 10 年」。 | (a) Context 法源表移除兩列「法務部 函釋」；(b) Context line 16 商業會計法第 38 條補第 2 項「會計帳簿與財務報表 10 年」分流；(c) Context 「明確結論：仍屬個資」軟化為「保守視為個資」並重述核心法源組合；(d) References 段同步刪兩則錯誤函釋連結；(e) References 段商業會計法 38 條描述補第 2 項；(f) Decision 段（4 prong + 7 年 + 真匿名化）**不動** |

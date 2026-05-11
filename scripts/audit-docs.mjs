@@ -262,7 +262,7 @@ async function checkAdrReferences() {
 
 const DEPRECATED_TERMS = [
   // [pattern, replacement-or-explanation]
-  [/\bAuth\.js\b/g, "Better Auth (per ADR-0006 / brainstorm A5 reversal)"],
+  [/\bAuth\.js\b/g, "Better Auth (per ADR-0132 / supersedes ADR-0005)"],
   [/\bNEXTAUTH_SECRET\b/g, "BETTER_AUTH_SECRET"],
   [/\bAUTH_SECRET\b(?!.*BETTER_AUTH)/g, "BETTER_AUTH_SECRET"],
   [/@auth\/drizzle-adapter/g, "better-auth/adapters/drizzle"],
@@ -627,7 +627,7 @@ function relPath(absPath) {
 
 function printReport() {
   if (issues.length === 0) {
-    console.log("✓ audit-docs: no issues found across all 7 checks.");
+    console.log(`✓ audit-docs: no issues found across all ${checks.length} checks.`);
     return 0;
   }
 

@@ -374,7 +374,7 @@
 
 #### 6.3.2 audit_log 跨表真匿名化（ADR-0133 方案 A）
 
-reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反法務部「客觀上仍有還原可能即仍屬個資」函釋（[法律字第 10303513040 號](https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5)）。
+reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反憲法法庭 [111 年憲判字第 13 號](https://cons.judicial.gov.tw/docdata.aspx?fid=38&id=309956) 健保案立場（「代碼化措施僅大幅降低侵害非完全消滅」）+ NIST SP 800-188 真匿名化標準（保留 user_id surrogate key = pseudonymization 而非 anonymization）。
 
 | 欄位 | 處理方式 |
 |---|---|

@@ -61,7 +61,7 @@ RRMS/
 
 - [ ] Plan 1 Task 14 Step 7 已回報「Vercel preview pipeline 通過」
 - [ ] `bash scripts/red-team-test.sh` 在 Plan 1 結束時顯示 `Pass: 2 / 2`
-- [ ] GitHub repo Settings → Branches 顯示 `main` 分支有 protection rule，required status checks 含 4 個 jobs
+- [ ] GitHub repo Settings → Branches 顯示 `main` 分支有 protection rule，required status checks 含 **7 個 jobs**（Plan 1 的 4 個：gitleaks / ESLint + tsc / Client bundle scan / semgrep OWASP；Phase 4 補的 3 個：Doc audit / Dependency audit / Ban drizzle-kit push）
 - [ ] 本機 `pnpm dev` 跑得起來、看到 RRMS 首頁
 
 **全部通過才進 Task 0。**
@@ -236,6 +236,20 @@ git push
 ## Task 3: 加 npm audit job 到 CI
 
 對應 spec 6.7.4 共用掃描清單。
+
+> **🟢 已 Phase 4 落地 — Task 3 改為驗收 + 對齊**
+>
+> Phase 4 (PR #10) 已加 `Dependency audit` job（[`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) 行 134–155）跑 `pnpm audit --audit-level=high --prod`，per ADR-0134 #5（Better Auth 3 個 GHSA advisory 偵測）。較原 Plan 2 規格多 `--prod` flag 限定 production deps，更嚴格更合理。
+>
+> 本 Task 改為以下驗收：
+>
+> - [ ] **Step 1**：開 [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)，verify `Dependency audit` job 存在且 script 為 `pnpm audit --audit-level=high --prod`
+> - [ ] **Step 2**：local 跑 `pnpm audit --audit-level=high --prod`，預期可能列 low/moderate（被忽略）、不應有 high/critical
+> - [ ] **Step 3**：確認 `Dependency audit` 名稱已在 branch protection required_status_checks 中（Task 10 Step 2 涵蓋）
+>
+> 下方原 Plan 2 Step 1–3 **不執行**（保留作為 reference + regression 護欄）：
+>
+> ---
 
 - [ ] **Step 1：修改 .github/workflows/ci.yml 加上 npm-audit job**
 
@@ -704,15 +718,17 @@ git commit -m "test(security): verify ZAP detects planted XSS"
 - [ ] **Step 1：用 gh API 更新 branch protection（含 Phase 5 新增的 doc-audit job）**
 
 ```powershell
+# 名稱對齊 ci.yml 中的 `name:` 欄位（GitHub 用 job name 作 context key、大小寫敏感）
 gh api repos/<owner>/rrms/branches/main/protection -X PUT `
   -F "required_status_checks.strict=true" `
   -F "required_status_checks.contexts[]=gitleaks" `
   -F "required_status_checks.contexts[]=ESLint + tsc" `
   -F "required_status_checks.contexts[]=Client bundle scan" `
   -F "required_status_checks.contexts[]=semgrep OWASP" `
-  -F "required_status_checks.contexts[]=npm audit (high+)" `
+  -F "required_status_checks.contexts[]=Doc audit" `
+  -F "required_status_checks.contexts[]=Dependency audit" `
+  -F "required_status_checks.contexts[]=Ban drizzle-kit push" `
   -F "required_status_checks.contexts[]=ZAP baseline scan" `
-  -F "required_status_checks.contexts[]=doc-audit" `
   -F "enforce_admins=true" `
   -F "required_pull_request_reviews.dismiss_stale_reviews=true" `
   -F "restrictions=null"
@@ -724,7 +740,22 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 
 - [ ] **Step 2：使用者驗證網頁設定**
 
-到 `https://github.com/<owner>/rrms/settings/branches`，確認 main 的 protection rule 中 required status checks 含全部 7 項（Plan 1 的 4 個 + Plan 2 的 3 個：`npm audit (high+)`、`ZAP baseline scan`、`doc-audit`），且 `enforce_admins` 與 `dismiss_stale_reviews` 仍開啟。
+到 `https://github.com/<owner>/rrms/settings/branches`，確認 main 的 protection rule 中 required status checks 含全部 **8 項**：
+
+| 來源 | Context name（須完全對齊 ci.yml `name:` 欄位） |
+|---|---|
+| Plan 1 | `gitleaks` |
+| Plan 1 | `ESLint + tsc` |
+| Plan 1 | `Client bundle scan` |
+| Plan 1 | `semgrep OWASP` |
+| Phase 4 | `Doc audit` |
+| Phase 4 | `Dependency audit` |
+| Phase 4 | `Ban drizzle-kit push` |
+| Plan 2（本 task）| `ZAP baseline scan` |
+
+且 `enforce_admins` 與 `dismiss_stale_reviews` 仍開啟。
+
+> ⚠ **PUT API 全物件取代陷阱**：上述 8 個 contexts 必須一次列齊。GitHub branch protection [PUT API](https://docs.github.com/en/rest/branches/branch-protection?apiVersion=2022-11-28#update-branch-protection) 是整物件取代，若漏列任何一項即視為刪除。Phase 4 已啟用的 `Doc audit` / `Dependency audit` / `Ban drizzle-kit push` 不能在此 task 被默默移除。
 
 - [ ] **Step 3：紅隊驗證 — 開 PR 故意製造任一 check fail，驗證不能 merge**
 
@@ -747,7 +778,8 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 - [ ] `docs/security/incident-response-playbook.md` 存在
 - [ ] Dependabot 紅隊驗證通過（Task 8）
 - [ ] ZAP 紅隊驗證通過（Task 9）
-- [ ] Branch Protection required status checks 含 8 項：gitleaks、ESLint + tsc、Client bundle scan、semgrep OWASP、npm audit (high+)、ZAP baseline scan、**doc-audit**（Task 12）、**vercel build secret scan / L5**（Task 11）
+- [ ] Branch Protection required status checks 含 **8 個 GitHub Actions contexts**：`gitleaks`、`ESLint + tsc`、`Client bundle scan`、`semgrep OWASP`、`Doc audit`（Phase 4 落地）、`Dependency audit`（Phase 4 落地）、`Ban drizzle-kit push`（Phase 4 落地）、`ZAP baseline scan`（Plan 2 新增）
+- [ ] Vercel L5 build secret scan 由 `vercel.ts` buildCommand 強制（build fail = deploy fail；屬 Vercel 平台級檢查、**不**列在 GitHub required_status_checks）— Task 11 覆蓋
 
 ---
 
@@ -770,14 +802,32 @@ gh api repos/<owner>/rrms/branches/main/protection -X PUT `
 
 **目標**：自動化檢查文件之間的一致性，防止 consistency-audit 第 1 輪那種 21 條 issue 級的 drift 再發生。
 
-**Acceptance**：
-- [ ] `scripts/audit-docs.mjs` 存在、含 6 條檢查（brainstorm hard 決議 → ADR 覆蓋；ADR 引用一致性；已淘汰術語；套件版本一致性；環境變數命名一致性；file path 引用存在）
-- [ ] `package.json` 加 `"audit:docs": "node scripts/audit-docs.mjs"`
-- [ ] `.github/workflows/ci.yml` 加 `doc-audit` job（runs `pnpm audit:docs`）
-- [ ] `doc-audit` 加進 Task 10 Step 1 的 branch protection required checks 清單
-- [ ] 紅隊驗證：故意改文件造 inconsistency、push、確認 CI fail
+> **🟢 已 Phase 4 落地 — Task 12 改為 regression 驗收**
+>
+> Phase 4 (PR #10) + Phase 4 hotfix (PR #11) 已落地：
+> - [`scripts/audit-docs.mjs`](../../../scripts/audit-docs.mjs)：**6 個 top-level check function**（ADR file integrity / ADR reference consistency / Deprecated-term scan / Package-version drift / Env-var naming consistency / Markdown link integrity；其中 ADR file integrity 內嵌 Amendment Policy 驗證、Markdown link integrity 內嵌 continue.md exception）
+> - `package.json` 已加 `"audit:docs": "node scripts/audit-docs.mjs"`
+> - [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) 行 113–132 已加 `Doc audit` job
+> - `Doc audit` 已在 branch protection required_status_checks 中（Task 10 Step 2 涵蓋）
+>
+> 本 Task 改為以下驗收 step：
+>
+> - [ ] **Step 1**：開 [`scripts/audit-docs.mjs`](../../../scripts/audit-docs.mjs)，verify 6 個 top-level check function 都存在（含 Amendment Policy + continue.md exception 兩個內嵌 sub-validation）
+> - [ ] **Step 2**：local 跑 `pnpm audit:docs` 必過（`0 errors / 0 warnings`）
+> - [ ] **Step 3**：紅隊驗證——故意改一份 plan 引用不存在的 ADR、push、確認 CI `Doc audit` job fail；隨後復原
+>
+> 下方 Acceptance 條目保留作為 regression 護欄、**不重新實作**。
+>
+> ---
 
-**前置依賴**：Phase 2 ADR 系統與文件結構重構必須先 merge（Task 12 的某些檢查依賴 ADR 編號存在）。
+**Acceptance**（已落地，保留作 regression）：
+- [x] `scripts/audit-docs.mjs` 存在、含 **6 個 top-level check function**（ADR file integrity / ADR reference consistency / Deprecated-term scan / Package-version drift / Env-var naming consistency / Markdown link integrity）+ Phase 4 加：ADR Amendment Policy validation（內嵌於 ADR file integrity）+ continue.md exception（內嵌於 Markdown link integrity）
+- [x] `package.json` 加 `"audit:docs": "node scripts/audit-docs.mjs"`
+- [x] `.github/workflows/ci.yml` 加 `Doc audit` job（runs `pnpm audit:docs`）
+- [x] `Doc audit` 加進 branch protection required checks 清單（Task 10 Step 2 涵蓋）
+- [ ] 紅隊驗證：故意改文件造 inconsistency、push、確認 CI fail（**本 Task 唯一還沒做的事**）
+
+**前置依賴**：Phase 2 ADR 系統與文件結構重構必須先 merge（Task 12 的某些檢查依賴 ADR 編號存在）— 已於 Phase 2A/2B (PR #7/#8) 完成。
 
 ---
 

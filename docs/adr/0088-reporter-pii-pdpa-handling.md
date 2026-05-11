@@ -46,9 +46,7 @@ Phase 1 報修者個資處理：
 - 個人資料保護法施行細則第 21 條（業務必須例外，4 個窄門）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=21
 - 商業會計法第 38 條（憑證保存 5 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=J0080009&flno=38
 - 民法第 125 條（請求權時效 15 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=125
-- 法務部 法律字第 10303513040 號函釋（2014/11/17 — 「客觀上仍有還原可能即仍屬個資」）: https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5
-- 法務部 法律字第 10603512680 號函釋（2017/11/10 — 同前）: https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5
-- 憲法法庭 111 年憲判字第 13 號（2022/8/12 健保案 — 創設「資料停止利用權」）: https://cons.judicial.gov.tw/docdata.aspx?fid=38&id=309956
+- 憲法法庭 111 年憲判字第 13 號（2022/8/12 健保案 — 創設「資料停止利用權」+「代碼化僅大幅降低非完全消滅」）: https://cons.judicial.gov.tw/docdata.aspx?fid=38&id=309956
 - NIST SP 800-188 De-Identification of Personal Information: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-188.pdf
 - ISO/IEC 20889:2018 Privacy enhancing data de-identification techniques: https://www.iso.org/standard/69373.html
 - GDPR Article 4(5) Pseudonymisation: https://gdpr-info.eu/art-4-gdpr/
@@ -62,3 +60,4 @@ Phase 1 報修者個資處理：
 | Date | PR | Reason | Change |
 |---|---|---|---|
 | 2026-05-11 | TBD (Phase 4) | Round-3 PDPA 法理深挖（2026-05-11）鎖定原 ADR 列為 TBD 的細則 + 確認設計關鍵法理（per 法務部 2014/2017 函釋 + 憲法法庭 111 憲判字第 13 號 + NIST SP 800-188） | 鎖定：(a) reporter PII 結案後保留期 = 2 年（不變）（b) audit_log 保留期 = 7 年（per ADR-0076 + 商業會計法 + 民法 125 條取較短整合值）（c) **明列「user 表 PII 匿名化後，user_id UUID 仍屬個資」**（per 法務部函釋「客觀上仍有還原可能即仍屬個資」）→ user 匿名化 trigger 必須同步真匿名化 audit_log 內 user_id（per ADR-0133 strategy A）（d) 兒童個資 / 跨境傳輸 SCC 仍 Phase 2 處理；References 大幅補充法源（憲法法庭判例 + 法務部函釋 + NIST + ISO + GDPR）；Related ADR 加 ADR-0077, ADR-0078, ADR-0133 |
+| 2026-05-11 | TBD (Phase 4 hotfix) | Round-4 evidence verification（2026-05-11 獨立研究員）發現前一列 amendment Reason 引用的「法務部 法律字第 10303513040 號 (2014)」於 mojlaw.moj.gov.tw 站內字號搜尋查無此函釋條目；「10603512680 號 (2017)」實質採「呈現方式說」立場（「依其呈現方式已無從直接或間接識別該特定個人者，即非屬個人資料」），與本 amendment 援引方向相反。經獨立驗證，前一列 amendment (c) 之**實質結論**（user_id UUID 經 user 表匿名化後仍屬個資、須同步真匿名化 audit_log）仍由憲法法庭 111 憲判字第 13 號「代碼化僅大幅降低非完全消滅」+ NIST SP 800-188 真匿名化標準 + 學界共識（保留 surrogate key 為 pseudonymization）獨立支撐，不受影響。前一列 amendment row 文本保留不修改（歷史紀錄完整）。 | (a) References 段移除兩則錯誤函釋連結；(b) 本列為元層更正紀錄，標示前一列 amendment 函釋引用已 superseded by Round-4 verification；(c) Related ADR 不變 |
