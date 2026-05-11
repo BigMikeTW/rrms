@@ -41,13 +41,15 @@ This directory is the **ports** half of the Hexagonal / Ports-and-Adapters archi
 
 ## Phase 1 status
 
-| Port    | File               | Status    | Concrete adapter lands in                        |
-| ------- | ------------------ | --------- | ------------------------------------------------ |
-| Storage | `storage/index.ts` | Port-only | Plan 5 (Dropbox media pipeline)                  |
-| Queue   | `queue/index.ts`   | Port-only | Phase 2+ (no Phase 1 consumer)                   |
-| Cron    | `cron/index.ts`    | Port-only | Plan 8 (Vercel Cron — anonymization)             |
-| AI      | `ai/index.ts`      | Port-only | Phase 3+ (no Phase 1 consumer)                   |
-| LINE    | `line/index.ts`    | Port-only | Plan 6 (admin push) + Phase 7 (LIFF customer UI) |
+| Port    | File                                               | Status         | Concrete adapter lands in                                                                                                                                                                                                    |
+| ------- | -------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage | `storage/index.ts`                                 | Port-only      | Plan 5 (Dropbox media pipeline)                                                                                                                                                                                              |
+| Queue   | `queue/index.ts`                                   | Port-only      | Phase 2+ (no Phase 1 consumer)                                                                                                                                                                                               |
+| Cron    | `cron/index.ts`                                    | Port-only      | Plan 8 (Vercel Cron — anonymization)                                                                                                                                                                                         |
+| AI      | `ai/index.ts`                                      | Port-only      | Phase 3+ (no Phase 1 consumer)                                                                                                                                                                                               |
+| LINE    | `line/index.ts`                                    | Port-only      | Plan 6 (admin push) + Phase 7 (LIFF customer UI)                                                                                                                                                                             |
+| Cache   | `cache/index.ts` + `cache/InMemoryCacheAdapter.ts` | Phase 1 active | `InMemoryCacheAdapter` ships now (per [ADR-0110](../../docs/adr/0110-hexagonal-ports-and-adapters.md) + Phase 4 finding #4 — Vercel KV deprecated, in-memory adapter chosen)                                                 |
+| Email   | `email/index.ts`                                   | Port-only      | Plan 4 / 8 — `ResendEmailAdapter` (per [ADR-0110](../../docs/adr/0110-hexagonal-ports-and-adapters.md) + [ADR-0134](../../docs/adr/0134-better-auth-phase-1-security-configuration.md) — Resend pulled forward into Phase 1) |
 
 ## Why no `auth/` and no generic `messaging/`
 

@@ -466,7 +466,7 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 #### 6.7.4 自動防護機制 — 五層縱深防禦（Defense in Depth）
 
-**原則**：任何單一檢查都可能被繞過或失效；採用五層獨立檢查，每層擋一面，任一層擋下即安全。**Phase 1 必做 L1 + L2 + L4**；L3、L5 為 Phase 2 補強。
+**原則**：任何單一檢查都可能被繞過或失效；採用五層獨立檢查，每層擋一面，任一層擋下即安全。**Phase 1 必做 L1 + L2 + L4 + L5**；L3 為 Phase 2 補強。
 
 ##### Layer 1：Claude Code Hooks（AI 開發 session 內，最即時）
 
@@ -551,9 +551,9 @@ reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反�
 
 ---
 
-##### Layer 5：Vercel build check（Phase 2）
+##### Layer 5：Vercel build check（Phase 1 啟用）
 
-**目的**：部署最後一關。`vercel.ts` 的 `buildCommand` 中加入掃描，scan fail → build fail → 不部署。Phase 2 補齊。
+**目的**：部署最後一關。`vercel.ts` 的 `buildCommand` 設為 `pnpm build && pnpm scan:bundle`，scan fail → build fail → 不部署。Phase 1 啟用（Plan 2 Task 11）。
 
 ---
 

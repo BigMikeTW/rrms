@@ -1,0 +1,51 @@
+# What:  GitHub Actions workflow running OWASP ZAP baseline scan against
+#        the RRMS production URL every weekday morning (02:00
+#        Asia/Taipei). Uses the same `.zap/rules.tsv` customization as
+#        the PR workflow (Task 4) for consistency. Auto-creates GitHub
+#        issue on scan failure via `allow_issue_writing`.
+# Why:   Continuous security monitoring per spec §6.7.4. Phase 1 ships
+#        with a static set of features; new CVEs in upstream deps
+#        (caught by Dependency audit job) cover supply chain, but new
+#        CVE classes (e.g., specific user-input vectors landed via a
+#        dependency upgrade) need re-validation on the deployed
+#        artifact. Daily ZAP catches drift between PR-time baselines
+#        and what's actually serving real traffic. Targets the public
+#        production URL (no auth required for the public report form
+#        path). admin paths (/admin/**) are auth-gated so ZAP can only
+#        scan the public surface — this is intentional Phase 1 scope.
+# Where: Repo: `.github/workflows/security-zap-daily.yml`. Targets
+#        `https://rrms-black.vercel.app` (Vercel default URL; rrms.pro080.com
+#        custom domain not yet active — switches in Plan 8 when DNS is
+#        configured; this file will be updated then).
+# When:  cron `0 18 * * *` (18:00 UTC = 02:00 Asia/Taipei). Also runs on
+#        manual `workflow_dispatch` (allows operators to re-trigger
+#        after a fix without waiting for cron tick).
+
+name: Security — ZAP daily
+
+permissions:
+  contents: read
+  issues: write
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 18:00 UTC = 02:00 Asia/Taipei
+  workflow_dispatch:
+
+jobs:
+  zap-daily:
+    name: ZAP baseline scan (production)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: "https://rrms-black.vercel.app"
+          rules_file_name: ".zap/rules.tsv"
+          fail_action: true
+          allow_issue_writing: true
+          issue_title: "[Security] Daily ZAP scan failed (production)"

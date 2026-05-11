@@ -1,13 +1,13 @@
 # ADR 0089 — 多租戶資料隔離採 AWS Pool 模式（owner_id + Postgres RLS）
 
-| Field | Value |
-|---|---|
-| Status | Accepted |
-| Date | 2026-05-10 |
-| Supersedes | — |
-| Superseded by | — |
+| Field           | Value                                                                               |
+| --------------- | ----------------------------------------------------------------------------------- |
+| Status          | Accepted                                                                            |
+| Date            | 2026-05-10                                                                          |
+| Supersedes      | —                                                                                   |
+| Superseded by   | —                                                                                   |
 | Brainstorm 來源 | `location-and-coverage-v2.html` § E 決議 E1; `platform-rigorous-analysis.html` 對應 |
-| Related ADR | ADR-0017, ADR-0067, ADR-0076 |
+| Related ADR     | ADR-0017, ADR-0067, ADR-0076, ADR-0077, ADR-0133                                    |
 
 ## Context
 
@@ -20,15 +20,18 @@ RRMS 將從 Phase 1 的單一業主擴展為 Phase 2 多租戶 SaaS（多家業�
 ## Consequences
 
 ### ✅ 好處
+
 - 單一 deployment 服務多業主，運維成本不隨租戶線性上升
 - RLS 在 DB 層阻擋跨租戶洩漏 — 即使應用層 bug 也不破防
 - 對應 brainstorm A17 多租戶基礎決議
 
 ### ⚠️ 代價
+
 - 所有 query 必須設定 session 變數，遺漏即 RLS 拒絕（開發紀律）
 - 跨租戶報表需 elevated role bypass RLS（要嚴格審計）
 
 ### 🔮 未來影響
+
 - Phase 2 啟用 RLS 時須完整 E2E 測試所有 read/write path
 - Phase 3 Enterprise tier 可選 Silo 模式（單一業主獨立 DB）做為升級路徑
 
@@ -37,3 +40,9 @@ RRMS 將從 Phase 1 的單一業主擴展為 Phase 2 多租戶 SaaS（多家業�
 - AWS SaaS Lens — Tenant Isolation Strategies: https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/tenant-isolation.html
 - PostgreSQL Row Security Policies: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
 - Brainstorm: `location-and-coverage-v2.html` 決議 E1
+
+## Amendments
+
+| Date       | PR                      | Reason                                                                                                                                 | Change                                                                |
+| ---------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 2026-05-11 | TBD (Plan 2 mini-audit) | Round-3 doc audit 發現 ADR-0133 §Decision 方案 A（audit_log 跨表真匿名化）與多租戶紀律耦合，但本 ADR Related ADR 未列 0133（單向引用） | Related ADR 加 ADR-0077, ADR-0133（cross-link 補充；Decision 段不動） |
