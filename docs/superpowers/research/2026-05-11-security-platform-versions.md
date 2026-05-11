@@ -20,21 +20,21 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 
 ## 摘要表
 
-| # | 工具 / API | Plan 引用版本 | 當前 latest (accessed 2026-05-11) | 差異 | Breaking change? |
-|---|---|---|---|---|---|
-| 1 | Dependabot config schema | v2 | v2 | 無 | 否 |
-| 2 | Dependabot Security Updates | repository setting | 相同 | 無 | 否 |
-| 3 | `PUT /repos/{owner}/{repo}/vulnerability-alerts` | 同 | 同；admin 權限 | 無 | 否 |
-| 4 | `zaproxy/action-baseline` | v0.15.0 | v0.15.0 (2024-10-24) | 持平 | 否 |
-| 5 | GitHub Actions `schedule` cron | 5-field cron, min 5 min | 同 | 無；新增 `timezone:` 例 | 否 |
-| 6 | `actions/github-script` | — (Plan 未鎖版本) | v9.0.0 (2026-04-09) | n/a | v9 移除 `require('@actions/github')` — ESM-only |
-| 7 | `semgrep/semgrep` image | `:1.86.0` (ci.yml 當前) | `:1.162.0` (2026-05-07) | 落後 76 minor releases / ~18 月 | 否（CLI flags 穩定）；rule 內容更新 |
-| 8 | Node 20 deprecation | n/a | 2026-06-02 default→Node 24；2026-09-16 移除 | 21 天後生效 | 是（runner 行為） |
-| 9 | `patrickedqvist/wait-for-vercel-preview` | v1.3.3 | v1.3.3 (2022-01-21) | 持平 | 否；但 action 4 年未更新 — 風險 |
-| 10 | `actions/checkout@v6` (ci.yml) | v6 | v6.0.2 (2025-01-09)；Node 24 | n/a | 否 |
-| 11 | `pnpm/action-setup@v4` (ci.yml) | v4 | v6.0.6（v4.x 已回填 Node 24） | major bump 可選 | v4 已升 Node 24，可不 bump |
-| 12 | `actions/setup-node@v4` (ci.yml) | v4 | v6.4.0 (2024-04-20)；Node 24 | major bump 可選 | v5+ 才上 Node 24 |
-| 13 | `gitleaks/gitleaks-action@v2` | v2 | v2.3.9；Node 20 only | 持平 major | 仍為 Node 20，**有 deprecation 風險** |
+| #   | 工具 / API                                       | Plan 引用版本           | 當前 latest (accessed 2026-05-11)           | 差異                            | Breaking change?                                |
+| --- | ------------------------------------------------ | ----------------------- | ------------------------------------------- | ------------------------------- | ----------------------------------------------- |
+| 1   | Dependabot config schema                         | v2                      | v2                                          | 無                              | 否                                              |
+| 2   | Dependabot Security Updates                      | repository setting      | 相同                                        | 無                              | 否                                              |
+| 3   | `PUT /repos/{owner}/{repo}/vulnerability-alerts` | 同                      | 同；admin 權限                              | 無                              | 否                                              |
+| 4   | `zaproxy/action-baseline`                        | v0.15.0                 | v0.15.0 (2024-10-24)                        | 持平                            | 否                                              |
+| 5   | GitHub Actions `schedule` cron                   | 5-field cron, min 5 min | 同                                          | 無；新增 `timezone:` 例         | 否                                              |
+| 6   | `actions/github-script`                          | — (Plan 未鎖版本)       | v9.0.0 (2026-04-09)                         | n/a                             | v9 移除 `require('@actions/github')` — ESM-only |
+| 7   | `semgrep/semgrep` image                          | `:1.86.0` (ci.yml 當前) | `:1.162.0` (2026-05-07)                     | 落後 76 minor releases / ~18 月 | 否（CLI flags 穩定）；rule 內容更新             |
+| 8   | Node 20 deprecation                              | n/a                     | 2026-06-02 default→Node 24；2026-09-16 移除 | 21 天後生效                     | 是（runner 行為）                               |
+| 9   | `patrickedqvist/wait-for-vercel-preview`         | v1.3.3                  | v1.3.3 (2022-01-21)                         | 持平                            | 否；但 action 4 年未更新 — 風險                 |
+| 10  | `actions/checkout@v6` (ci.yml)                   | v6                      | v6.0.2 (2025-01-09)；Node 24                | n/a                             | 否                                              |
+| 11  | `pnpm/action-setup@v4` (ci.yml)                  | v4                      | v6.0.6（v4.x 已回填 Node 24）               | major bump 可選                 | v4 已升 Node 24，可不 bump                      |
+| 12  | `actions/setup-node@v4` (ci.yml)                 | v4                      | v6.4.0 (2024-04-20)；Node 24                | major bump 可選                 | v5+ 才上 Node 24                                |
+| 13  | `gitleaks/gitleaks-action@v2`                    | v2                      | v2.3.9；Node 20 only                        | 持平 major                      | 仍為 Node 20，**有 deprecation 風險**           |
 
 ## 詳細
 
@@ -117,13 +117,13 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
   - 2026-09-16：Node 20 從 runner 完全移除
 - **當前 ci.yml 涉及 actions 與 Node 版本狀態**：
 
-  | Action | ci.yml 引用 | Node 20→24 狀態 | 行動 |
-  |---|---|---|---|
-  | `actions/checkout@v6` | v6 | v6.0.0+ 用 Node 24 | 已安全 ✓ |
-  | `pnpm/action-setup@v4` | v4 | v4.3.0+ 已回填 Node 24（同 v5/v6） | 已安全 ✓ |
-  | `actions/setup-node@v4` | v4 | v5+ 才上 Node 24；**v4 仍 Node 20** | **需 bump 至 v5 或 v6** |
-  | `gitleaks/gitleaks-action@v2` | v2 | v2.3.9 仍 Node 20；上游無 Node 24 plan | **風險**：可加 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'` env workaround，但官方 issue #4295 顯示該 flag 仍會觸發 warning |
-  | `zaproxy/action-baseline@v0.15.0` | v0.15.0 | 已 Node 24 | 已安全 ✓ |
+  | Action                            | ci.yml 引用 | Node 20→24 狀態                        | 行動                                                                                                                        |
+  | --------------------------------- | ----------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+  | `actions/checkout@v6`             | v6          | v6.0.0+ 用 Node 24                     | 已安全 ✓                                                                                                                    |
+  | `pnpm/action-setup@v4`            | v4          | v4.3.0+ 已回填 Node 24（同 v5/v6）     | 已安全 ✓                                                                                                                    |
+  | `actions/setup-node@v4`           | v4          | v5+ 才上 Node 24；**v4 仍 Node 20**    | **需 bump 至 v5 或 v6**                                                                                                     |
+  | `gitleaks/gitleaks-action@v2`     | v2          | v2.3.9 仍 Node 20；上游無 Node 24 plan | **風險**：可加 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'` env workaround，但官方 issue #4295 顯示該 flag 仍會觸發 warning |
+  | `zaproxy/action-baseline@v0.15.0` | v0.15.0     | 已 Node 24                             | 已安全 ✓                                                                                                                    |
 
 - **opt-out flag**：`ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true`（僅延緩至秋季 runner 升級）— **不建議使用，違背 security baseline 精神**。
 - **建議**：
@@ -186,3 +186,13 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - [pnpm/action-setup releases](https://github.com/pnpm/action-setup/releases)
 - [actions/setup-node releases](https://github.com/actions/setup-node/releases)
 - [gitleaks/gitleaks-action releases](https://github.com/gitleaks/gitleaks-action/releases)
+
+## Plan 2 執行紀錄
+
+### Task 1: Dependabot 啟用（2026-05-11）
+
+- `gh api repos/BigMikeTW/rrms/vulnerability-alerts -X PUT` → HTTP 204 ✓
+- `gh api repos/BigMikeTW/rrms/automated-security-fixes -X PUT` → HTTP 204 ✓
+- 驗證 readback：
+  - vulnerability-alerts GET → 204（enabled）✓
+  - automated-security-fixes GET → `{"enabled": true, "paused": false}` ✓
