@@ -205,3 +205,12 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - 4W docstring 完整；引 ADR-0134 #5 + spec §6.7.4
 - commit SHA: 7953b7d
 - 驗證：等 Plan 2 PR merge 後檢查 GitHub Insights → Dependabot 是否 active
+
+### Task 4: ZAP baseline scan on PR（2026-05-11）
+
+- `.zap/rules.tsv` 建立（3 條 rule：CSP / Permissions-Policy IGNORE、in-page banner WARN）
+- `.github/workflows/security-zap-pr.yml` 建立（Q1 decision: inline `gh api deployments` polling 取代 `wait-for-vercel-preview`；γ-2 F-19 用 `actions/setup-node@v6` + `actions/checkout@v6`）
+- 跳過 plan 原 Step 3 test PR — 合併到 Task 9 XSS red-team 一次驗證（PR 數量精簡）
+- 4W 完整；引 spec §6.7.4 + γ-2 F-19
+- commit SHA (workflow): 89df91a
+- commit SHA (research log): (this commit)
