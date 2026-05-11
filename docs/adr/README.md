@@ -190,6 +190,8 @@
 | ID | Title | Status |
 |---|---|---|
 | [0132](0132-better-auth-replaces-authjs-v5.md) | Better Auth 取代 Auth.js v5（supersedes ADR-0005） | Accepted |
+| [0133](0133-audit-log-anonymization-strategy.md) | audit_log 真匿名化策略（A+B+C+D 4 方案組合） | Accepted |
+| [0134](0134-better-auth-phase-1-security-configuration.md) | Better Auth Phase 1 強制安全配置清單 | Accepted |
 
 ---
 

@@ -151,6 +151,72 @@ async function checkAdrIntegrity() {
         }
       }
     }
+
+    // Amendment section validation (per ADR-0000 Amendment Policy)
+    // If an ADR has `## Amendments`, every row in the table MUST have all 4
+    // columns (Date / PR / Reason / Change), in that order, with non-empty
+    // values. This guards against drift in the discipline established by
+    // ADR-0000 (typo / extension / link fixes only — decision changes still
+    // require supersede). The Decision section content immutability is a
+    // discipline (audit-docs cannot enforce it without git history diff).
+    if (/^##\s+Amendments\s*$/m.test(text)) {
+      const lines = text.split(/\r?\n/);
+      let inSection = false;
+      let inTable = false;
+      let headerSeen = false;
+      let separatorSeen = false;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (/^##\s+Amendments\s*$/.test(line)) {
+          inSection = true;
+          continue;
+        }
+        if (inSection && /^##\s+/.test(line)) break; // next section ends scan
+        if (!inSection) continue;
+        if (!line.trim()) continue;
+
+        // Table rows start with `|`
+        if (!line.startsWith("|")) continue;
+        inTable = true;
+        const cols = line
+          .split("|")
+          .slice(1, -1)
+          .map((c) => c.trim());
+
+        if (!headerSeen) {
+          // First row is the header
+          if (cols.length !== 4 || cols[0].toLowerCase() !== "date" ||
+              cols[1].toLowerCase() !== "pr" || cols[2].toLowerCase() !== "reason" ||
+              cols[3].toLowerCase() !== "change") {
+            reportIssue("ADR-amendment", "error", relPath(file),
+              `ADR ${num} Amendments table header must be exactly | Date | PR | Reason | Change | (got: ${cols.join(" | ")})`,
+              i + 1);
+          }
+          headerSeen = true;
+          continue;
+        }
+        if (!separatorSeen) {
+          // Second row is the separator (---|---|---|---)
+          separatorSeen = true;
+          continue;
+        }
+        // Data rows
+        if (cols.length !== 4) {
+          reportIssue("ADR-amendment", "error", relPath(file),
+            `ADR ${num} Amendments row must have exactly 4 columns (Date / PR / Reason / Change); got ${cols.length}`,
+            i + 1);
+          continue;
+        }
+        if (!cols[0]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing Date`, i + 1);
+        if (!cols[1]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing PR`, i + 1);
+        if (!cols[2]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing Reason`, i + 1);
+        if (!cols[3]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing Change`, i + 1);
+      }
+      if (inTable && !headerSeen) {
+        reportIssue("ADR-amendment", "error", relPath(file),
+          `ADR ${num} has ## Amendments section but no table header row`);
+      }
+    }
   }
 }
 
@@ -455,6 +521,14 @@ async function checkEnvVarConsistency() {
     "NEXT_PUBLIC_LINE_CHANNEL_SECRET",
     // Red-team test payload (red-team-test.sh PAYLOAD_NAME):
     "LINE_CHANNEL_SECRET",
+    // Phase 4 audit_log event-type names (per ADR-0077) and change_reason codes
+    // (per ADR-0078). These look like LINE_* / *_TOKEN-style env vars to the
+    // heuristic but are documentation strings used in audit_log `what` and
+    // `reason_code` columns. They are NOT env vars and must be excluded from
+    // the env-var-drift check.
+    "LINE_WEBHOOK_RECEIVED", "LINE_INBOUND",
+    "LINE_PUSH_SENT", "LINE_PUSH_FAILED", "LINE_OUTBOUND",
+    "LINE_INVALID_SIGNATURE",
   ]);
 
   const candidateEnvVars = [...docEnvVars].filter((v) =>

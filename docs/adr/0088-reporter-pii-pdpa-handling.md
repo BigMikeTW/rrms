@@ -7,7 +7,7 @@
 | Supersedes | — |
 | Superseded by | — |
 | Brainstorm 來源 | （隱含於整體 PDPA 討論）§ D 決議 D14 |
-| Related ADR | ADR-0075, ADR-0076 |
+| Related ADR | ADR-0075, ADR-0076, ADR-0077, ADR-0078, ADR-0133 |
 
 ## Context
 
@@ -43,8 +43,22 @@ Phase 1 報修者個資處理：
 
 - 個人資料保護法第 5、8、11、12 條: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=I0050021
 - 個人資料保護法施行細則第 12 條: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
-- 商業會計法第 38 條（憑證保存期限）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=J0080009&flno=38
-- 民法第 125 條（請求權時效）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=125
+- 個人資料保護法施行細則第 21 條（業務必須例外，4 個窄門）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=21
+- 商業會計法第 38 條（憑證保存 5 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=J0080009&flno=38
+- 民法第 125 條（請求權時效 15 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=125
+- 法務部 法律字第 10303513040 號函釋（2014/11/17 — 「客觀上仍有還原可能即仍屬個資」）: https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5
+- 法務部 法律字第 10603512680 號函釋（2017/11/10 — 同前）: https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5
+- 憲法法庭 111 年憲判字第 13 號（2022/8/12 健保案 — 創設「資料停止利用權」）: https://cons.judicial.gov.tw/docdata.aspx?fid=38&id=309956
+- NIST SP 800-188 De-Identification of Personal Information: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-188.pdf
+- ISO/IEC 20889:2018 Privacy enhancing data de-identification techniques: https://www.iso.org/standard/69373.html
+- GDPR Article 4(5) Pseudonymisation: https://gdpr-info.eu/art-4-gdpr/
+- GDPR Recital 26 (anonymization): https://gdpr-info.eu/recitals/no-26/
 - GDPR Article 5 (Principles): https://gdpr-info.eu/art-5-gdpr/
 - GDPR Article 13 (Information to be provided): https://gdpr-info.eu/art-13-gdpr/
 - RRMS Phase 1 spec §6 PDPA section: ../superpowers/specs/2026-05-07-rrms-phase1-design.md
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Phase 4) | Round-3 PDPA 法理深挖（2026-05-11）鎖定原 ADR 列為 TBD 的細則 + 確認設計關鍵法理（per 法務部 2014/2017 函釋 + 憲法法庭 111 憲判字第 13 號 + NIST SP 800-188） | 鎖定：(a) reporter PII 結案後保留期 = 2 年（不變）（b) audit_log 保留期 = 7 年（per ADR-0076 + 商業會計法 + 民法 125 條取較短整合值）（c) **明列「user 表 PII 匿名化後，user_id UUID 仍屬個資」**（per 法務部函釋「客觀上仍有還原可能即仍屬個資」）→ user 匿名化 trigger 必須同步真匿名化 audit_log 內 user_id（per ADR-0133 strategy A）（d) 兒童個資 / 跨境傳輸 SCC 仍 Phase 2 處理；References 大幅補充法源（憲法法庭判例 + 法務部函釋 + NIST + ISO + GDPR）；Related ADR 加 ADR-0077, ADR-0078, ADR-0133 |

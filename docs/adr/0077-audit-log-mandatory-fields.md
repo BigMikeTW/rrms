@@ -7,7 +7,7 @@
 | Supersedes | — |
 | Superseded by | — |
 | Brainstorm 來源 | `audit-trail.html` § D 決議 D3 |
-| Related ADR | ADR-0075, ADR-0076, ADR-0078 |
+| Related ADR | ADR-0017, ADR-0075, ADR-0076, ADR-0078, ADR-0089, ADR-0133 |
 
 ## Context
 
@@ -19,7 +19,9 @@ GDPR Article 30(1) 列出 records of processing 必含項目（controller、purp
 
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `who` | uuid | 操作者 user_id |
+| `tenant_id` | uuid | 租戶識別（per ADR-0017 multi-tenant Level 3；Phase 1 單一 default tenant `'00000000-...01'`）|
+| `request_id` | uuid | HTTP request correlation ID（OpenTelemetry trace ID 或 Vercel `x-vercel-id`；同一 request 可寫多筆 audit row，必須能 group）|
+| `who` | uuid | 操作者 user_id（per ADR-0133 user 表匿名化時須同步真匿名化此欄位）|
 | `when` | timestamptz | 事件發生時間（DB 端 default `now()`）|
 | `what` | text | 事件類型（如 `NODE_ARCHIVED`）|
 | `target` | jsonb | 被影響的 node / 合約 / 案件識別 |
@@ -48,7 +50,14 @@ GDPR Article 30(1) 列出 records of processing 必含項目（controller、purp
 
 ## References
 
-- 個人資料保護法施行細則第 12 條第 2 項第 6 款: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
+- 個人資料保護法施行細則第 12 條第 2 項第 10 款（使用紀錄、軌跡資料及證據保存）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
 - ISO/IEC 27001:2022 A.8.15 Logging: https://www.iso.org/standard/82875.html
 - GDPR Article 30(1) Records of processing activities: https://gdpr-info.eu/art-30-gdpr/
-- NIST SP 800-92 Guide to Computer Security Log Management: https://csrc.nist.gov/publications/detail/sp/800-92/final
+- NIST SP 800-92 Guide to Computer Security Log Management（correlation 要求）: https://csrc.nist.gov/publications/detail/sp/800-92/final
+- OpenTelemetry Trace context: https://opentelemetry.io/docs/specs/otel/trace/api/#spancontext
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Phase 4) | Round-1 研究 (2026-05-10) 發現原 11 欄漏列：(1) `tenant_id` — 與 ADR-0017 multi-tenant Level 3 紀律不一致 (2) `request_id` — 與 NIST SP 800-92 §4.2 correlation 要求不一致；屬「列表 extension」非「決策變動」per ADR-0000 Amendment Policy | Mandatory fields 11 → 13（補 `tenant_id`, `request_id`）；Related ADR 加 ADR-0017, ADR-0089, ADR-0133；References 加 OpenTelemetry trace context |

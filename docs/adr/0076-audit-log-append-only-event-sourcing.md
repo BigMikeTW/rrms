@@ -7,7 +7,7 @@
 | Supersedes | — |
 | Superseded by | — |
 | Brainstorm 來源 | `audit-trail.html` § D 決議 D2 |
-| Related ADR | ADR-0075, ADR-0077, ADR-0078 |
+| Related ADR | ADR-0075, ADR-0077, ADR-0078, ADR-0088, ADR-0133 |
 
 ## Context
 
@@ -34,7 +34,16 @@
 
 ## References
 
-- 個人資料保護法施行細則第 12 條第 2 項第 6 款: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
+- 個人資料保護法施行細則第 12 條第 2 項第 10 款（使用紀錄、軌跡資料及證據保存）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
+- 個人資料保護法施行細則第 21 條（業務必須例外，4 個窄門）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=21
 - ISO/IEC 27001:2022 A.8.15 Logging: https://www.iso.org/standard/82875.html
 - GDPR Article 30 Records of processing activities: https://gdpr-info.eu/art-30-gdpr/
+- 商業會計法第 38 條（憑證保存 5 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=J0080009&flno=38
+- 民法第 125 條（請求權時效 15 年）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=B0000001&flno=125
 - Martin Fowler, Event Sourcing: https://martinfowler.com/eaaDev/EventSourcing.html
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Phase 4) | Round-3 deep-dive 確認原 ADR 隱含「永久保留」會違反台灣個資法（憲法法庭 111 憲判字第 13 號 + 法務部 法律字第 10303513040/10603512680 號）；append-only 紀律不變，但 retention 必須有界 | 加 references（施行細則第 21 條 + 商業會計法 + 民法 125 條）；Related ADR 加 ADR-0088、ADR-0133；Phase 1 retention bound = 7 年（取商業會計法 + 民法 125 條較短整合值），到期整列刪除；user 表匿名化時須同步真匿名化 audit_log 內 user_id（per ADR-0133）|
