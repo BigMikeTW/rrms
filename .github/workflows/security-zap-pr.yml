@@ -8,10 +8,11 @@
 # Why:   Layer 4 dynamic security gate per spec §6.7.4 sixth scan
 #        (semgrep covers static; ZAP covers runtime). Phase 4's Layer 4
 #        already has gitleaks + ESLint+tsc + Client bundle scan + semgrep
-#        + Doc audit + Dependency audit + Ban drizzle-kit push (7
-#        contexts); this workflow adds an 8th (`ZAP baseline scan`)
-#        which becomes required via Plan 2 Task 10 branch-protection
-#        PUT. Inline `gh api deployments` polling replaces the legacy
+#        + Doc audit + Dependency audit + drizzle-push-ban (7
+#        contexts — job ids hyphenated here so the drizzle-push-ban grep
+#        does not self-trip on this comment); this workflow adds an 8th
+#        (`ZAP baseline scan`) which becomes required via Plan 2 Task 10
+#        branch-protection PUT. Inline `gh api deployments` polling replaces the legacy
 #        `patrickedqvist/wait-for-vercel-preview@v1.3.3` (4-year
 #        unupdated, Node 16 internal — fails 2026-06-02 deprecation)
 #        per Plan 2 Task 0 research and γ-2 F-19.
