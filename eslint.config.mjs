@@ -4,6 +4,7 @@ import nextTs from "eslint-config-next/typescript";
 import noPublicSecretVars from "./eslint-rules/no-public-secret-vars.mjs";
 import noServerSdkInClient from "./eslint-rules/no-server-sdk-in-client.mjs";
 import noPlatformSdkOutsideAdapter from "./eslint-rules/no-platform-sdk-outside-adapter.mjs";
+import noDirectDbQuery from "./eslint-rules/no-direct-db-query.mjs";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -26,6 +27,7 @@ const eslintConfig = defineConfig([
           "no-public-secret-vars": noPublicSecretVars,
           "no-server-sdk-in-client": noServerSdkInClient,
           "no-platform-sdk-outside-adapter": noPlatformSdkOutsideAdapter,
+          "no-direct-db-query": noDirectDbQuery,
         },
       },
     },
@@ -33,6 +35,7 @@ const eslintConfig = defineConfig([
       "rrms/no-public-secret-vars": "error",
       "rrms/no-server-sdk-in-client": "error",
       "rrms/no-platform-sdk-outside-adapter": "error",
+      "rrms/no-direct-db-query": "error",
     },
   },
 ]);

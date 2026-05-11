@@ -109,3 +109,82 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: semgrep --config p/owasp-top-ten --error
+
+  doc-audit:
+    # Why: Phase 2A's audit-docs script becomes a hard CI gate per the
+    # mini-audit discipline (feedback_per_plan_mini_audit.md). 0 errors
+    # required; warnings allowed but flagged in PR review. Catches
+    # ADR-ref drift, deprecated terms, package version drift, env-var
+    # drift, broken markdown links, and Amendment-section structural
+    # validation (added Phase 4 for ADR-0000 Amendment Policy).
+    name: Doc audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit:docs
+
+  dependency-audit:
+    # Why: Per ADR-0134 #5 (Better Auth Phase 1 security configuration),
+    # Round-3 source-code audit found 3 RRMS-relevant GHSA advisories on
+    # better-auth alone (GHSA-vp58-j275-797x, GHSA-36rg-gfq2-3h56,
+    # GHSA-hjpm-7mrm-26w8). Pinning ^1.6.10 includes those fixes, but
+    # new advisories surface continuously — pnpm audit at high+ severity
+    # catches them on every CI run rather than waiting for human review.
+    # `--audit-level=high` matches the threshold ADR-0134 mandates;
+    # moderate/low are not gated (they would be too noisy in early Phase 1).
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high --prod
+
+  drizzle-push-ban:
+    # Why: Per ADR-0017 + Round-2 Q3, Drizzle pgPolicy / RLS API is RC-stage
+    # with multiple known bugs in `drizzle-kit push` path (issues #3504,
+    # #4407, #4198, #3495). RRMS commits to `generate + migrate` only
+    # (raw SQL files reviewed). This job greps the repo to ensure no
+    # workflow / script / CLAUDE-edited file accidentally invokes
+    # `drizzle-kit push`. Fails the CI if any match found.
+    name: Ban drizzle-kit push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Grep for drizzle-kit push invocations
+        run: |
+          # Scope the search to file types where the command could actually
+          # be invoked: package.json scripts, shell scripts, JS/TS/MJS,
+          # CI workflow YAMLs (other than this one — see exclude below).
+          # Markdown / ADR / spec / plan files are intentionally excluded —
+          # they may legitimately mention the ban (e.g. ADR-0017 Phase 4
+          # Additions in Plan 3). The .toml gitleaks rule file also fine.
+          # This workflow itself is excluded to prevent self-match on the
+          # error message string below.
+          MATCHES=$(grep -rEn \
+            --include='*.json' --include='*.sh' --include='*.bash' \
+            --include='*.ts' --include='*.tsx' --include='*.mts' \
+            --include='*.js' --include='*.mjs' --include='*.cjs' \
+            --exclude-dir=.git --exclude-dir=node_modules \
+            --exclude-dir=.next --exclude-dir=build \
+            'drizzle-kit[[:space:]]+push' . || true)
+          if [ -n "$MATCHES" ]; then
+            echo "$MATCHES"
+            echo "::error::drizzle-kit push is banned per ADR-0017 + Round-2 Q3 (RC-stage RLS bugs in pgPolicy push path). Use 'drizzle-kit generate' + 'drizzle-kit migrate' instead."
+            exit 1
+          fi
+          echo "OK: no drizzle-kit push invocations found in executable files."

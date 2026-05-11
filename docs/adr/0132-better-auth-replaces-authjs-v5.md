@@ -7,7 +7,7 @@
 | Supersedes | ADR-0005 |
 | Superseded by | — |
 | Brainstorm 來源 | (post-brainstorm pivot — Plan 3 階段) |
-| Related ADR | ADR-0005, ADR-0104 |
+| Related ADR | ADR-0005, ADR-0104, ADR-0134 |
 
 ## Context
 
@@ -65,3 +65,9 @@ ADR-0005（brainstorm A5）原本鎖定 Auth.js v5 (NextAuth)。但在 Plan 3 �
 - Auth.js v5 beta status：https://authjs.dev/getting-started/installation
 - Auth.js maintainership transfer to Better Auth team (2025-09)：https://github.com/nextauthjs/next-auth/discussions/13252
 - 驗證 paper trail：[`docs/superpowers/research/2026-05-08-cross-plan-versions.md`](../superpowers/research/2026-05-08-cross-plan-versions.md) HIGH 2 / row 6
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Phase 4) | Round-3 source code 直驗證（Better Auth v1.6.10）發現 5 個必修預設配置；屬「強制配置補強」非「決策變動」（pivot to Better Auth 仍成立）。詳見新 ADR-0134 | Related ADR 加 ADR-0134（強制配置清單）；版本 pin 從 `^1.6` 收緊為 `^1.6.10`（含已知 GHSA fixes）|

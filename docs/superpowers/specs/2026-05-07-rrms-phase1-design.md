@@ -330,7 +330,7 @@
 1. **蒐集機關名稱**：（公司名稱待填）
 2. **蒐集目的**：「處理您的維修申請、案件進度追蹤、與您聯絡確認案情」
 3. **個資類別**：「姓名、聯絡電話、電子郵件、所屬單位、報修地點、影像紀錄（照片/影片）」
-4. **利用期間**：「自結案之翌日起 2 年；期滿系統將自動匿名化」
+4. **利用期間**：「自結案之翌日起 2 年；期滿系統將自動匿名化（per [ADR-0088](../../adr/0088-reporter-pii-pdpa-handling.md)）。為符合內部稽核、ISO 27001 與商業會計法等規定，您的操作紀錄（**不含**您姓名、電話、Email、地址等可識別資訊；**僅含**事件類型、時間、操作 metadata）將保留 **7 年**（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md)）。當您資料到期匿名化時，操作紀錄中對應的識別代號將同步替換為匿名常數，無法再連回您本人。」
 5. **利用地區**：「資料儲存與處理涉及以下境外地區：美國（Vercel、Dropbox、Neon）、日本（LINE）；未涉及將個資直接揭露給境外第三方使用」
 6. **利用對象**：「本公司處理人員」
 7. **利用方式**：「於本系統內部查閱、聯絡您本人」
@@ -349,14 +349,18 @@
 
 ### 6.3 資料保存與匿名化
 
+對應 [ADR-0088](../../adr/0088-reporter-pii-pdpa-handling.md)（reporter PII）+ [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md)（audit_log）+ [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md)（4 方案組合 A+B+C+D）。Round-3 PDPA 法理深挖（2026-05-11）已確認原「audit_log 永久保留」站不住（per 法務部函釋 + 憲法法庭 111 憲判字第 13 號 + NIST SP 800-188），故保存期須有界 + 須跨表真匿名化。
+
+#### 6.3.1 reporter PII 保存與匿名化
+
 | 規則 | 內容 |
 |---|---|
-| 保存期限 | 結案翌日起 2 年 |
-| 到期處理 | 自動匿名化（不可逆），非加密 |
+| 保存期限 | 結案翌日起 **2 年** |
+| 到期處理 | **真匿名化**（不可逆），非加密；同步觸發 audit_log 跨表處理（見 6.3.2） |
 | 排程 | 每日 03:00 台北時間（19:00 UTC 前一天）執行 Vercel Cron Job |
-| 例外 | 客戶提前透過 LINE OA 「我要刪除資料」→ 立即手動處理 |
+| 例外 | 客戶提前透過 LINE OA「我要刪除資料」/「我要停止利用」→ 7 個工作日內處理（per 個資法第 13 條 + ADR-0133 方案 D） |
 
-**匿名化欄位**：
+**匿名化欄位**（user / cases / case_media 表）：
 
 | 欄位 | 處理方式 |
 |---|---|
@@ -368,14 +372,47 @@
 | 媒體 | 從 Dropbox 刪除，case_media 紀錄刪除 |
 | 案件編號、案件類型、立案/結案時間、處理時長、公司名稱 | 保留 |
 
-### 6.4 當事人權利（第 11 條）
+#### 6.3.2 audit_log 跨表真匿名化（ADR-0133 方案 A）
 
-| 權利 | Phase 1 實作 |
+reporter PII 匿名化 trigger 必須**同步**處理 audit_log，否則違反法務部「客觀上仍有還原可能即仍屬個資」函釋（[法律字第 10303513040 號](https://mojlaw.moj.gov.tw/LawContentExShow.aspx?id=FE304775&type=E&etype=etype5)）。
+
+| 欄位 | 處理方式 |
 |---|---|
-| 查詢/閱覽/複製 | LINE OA「我要查詢我的資料」→ 後台同事手動回覆 |
-| 補充更正 | 同上 |
-| 停止處理利用 | 同上 |
-| 刪除 | LINE OA「我要刪除資料」→ 後台同事手動匿名化 |
+| `who` (uuid) | → 替換為固定常數 `'00000000-0000-0000-0000-ffffffffffff'`（reserved sentinel；user 表永遠無此 row） |
+| `target` (jsonb) — `reporter_name`/`reporter_phone`/`reporter_email`/`line_user_id` 等 PII key | → `(已匿名)` 或刪除 key |
+| `before` / `after` (jsonb) — 同前 PII key | → 同上 |
+| `ip_address` | 保留（個資但與 `who` 已切斷映射 → 客觀上難重連）|
+| `user_agent` | 保留 |
+| `tenant_id` / `request_id` / `when` / `what` / `reason_code` / `reason_note` / `approval_chain` | 保留（無 PII）|
+
+匿名化動作本身須再寫一筆新 audit_log row（**append-only 紀律不破壞**），`reason_code` = `USER_ANONYMIZED_RETENTION_EXPIRED`（cron 觸發）或 `USER_ANONYMIZED_RIGHTS_REQUEST`（當事人請求觸發），per [ADR-0078](../../adr/0078-change-reason-catalog.md)。
+
+#### 6.3.3 audit_log 整體保留期（ADR-0133 方案 B）
+
+| 規則 | 內容 |
+|---|---|
+| 保留期 | **7 年**（取商業會計法第 38 條 5 年 + 民法第 125 條請求權時效 15 年的整合值） |
+| 到期處理 | **整列刪除**（per 個資法第 11 條第 3 項；非匿名化）|
+| 排程 | 每日 cron 額外執行 `DELETE FROM audit_log WHERE occurred_at < NOW() - INTERVAL '7 years'`（Phase 2 改用 partition + DROP partition）|
+| 法源 | 個資法施行細則第 21 條第 1 款「法令規定保存期限」（援引商業會計法）|
+
+#### 6.3.4 outbox 表處理
+
+每筆業務寫入同 transaction 寫一筆 outbox（per ADR-0076 + Round-2 研究 Outbox pattern 取代 LISTEN/NOTIFY），`published_at IS NOT NULL` 後保留 7 天再 archive；audit_log 與 outbox **獨立寫入**（同 transaction 但無 FK）— audit_log 是法遵紀錄，outbox 是投遞中介。
+
+### 6.4 當事人權利（第 10、11、13 條）
+
+對應 [ADR-0088](../../adr/0088-reporter-pii-pdpa-handling.md) + [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) 方案 D（憲法法庭 111 憲判字第 13 號創設「資料停止利用權」）。
+
+| 權利 | Phase 1 實作 | 處理時限 |
+|---|---|---|
+| 查詢/閱覽/複製（第 10 條）| LINE OA「我要查詢我的資料」→ 後台同事手動回覆 | 30 日內（必要時延長 30 日，per 第 13 條）|
+| 補充更正 | 同上 | 30 日內 |
+| **停止處理利用**（per 111 憲判字 13）| LINE OA「我要停止利用我的資料」→ 後台同事處理 + 同步 audit_log 跨表真匿名化 | **7 個工作日內** |
+| 刪除 | LINE OA「我要刪除資料」→ 後台同事手動匿名化 + 同步 audit_log 跨表真匿名化（per 6.3.2）| **7 個工作日內** |
+| 後台同事代為處理 | Plan 4 admin UI（Phase 4 ADR-0133 方案 D 落地）| 同上 |
+
+**重要**：行使「停止利用 / 刪除」權利時，user 表 + audit_log + outbox 三表須同 transaction 處理；audit_log 走 6.3.2 真匿名化（不刪除事件本體；只切斷 actor 識別性）。
 
 ### 6.5 安全維護（施行細則第 12 條）
 
@@ -385,7 +422,7 @@
 | 儲存加密 | Neon AES-256 at-rest（預設） | — |
 | 密碼雜湊 | Better Auth 內建 scrypt | — |
 | 權限控制 | role-based（staff / admin） | + 敏感欄位 JIT 授權 |
-| 存取紀錄 | case_status_history 記錄狀態變更；query_attempts 記錄 LINE OA 查詢嘗試 | + access_log 記錄敏感欄位查看 |
+| 存取紀錄 | **audit_log 全系統 append-only 紀錄狀態變更**（per [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md) + [ADR-0077](../../adr/0077-audit-log-mandatory-fields.md) 13 必填欄位）；case_status_history（per Plan 6 高頻查詢視圖）；query_attempts（LINE OA 查詢嘗試）；保留 7 年 + 真匿名化 per [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md) | + 敏感欄位查看 audit；JIT 授權紀錄 |
 | 客戶查詢驗證 | LINE OA 查詢需「報修編號 + 手機末四碼」雙重驗證 + rate limiting + 異常告警 | + 客戶端 LINE Login OAuth 取代 |
 | 資料外洩通報 | 內部 SOP 文件（24h 內部通報、72h 通知當事人） | — |
 
@@ -670,18 +707,56 @@ export const config: VercelConfig = {
 
 ---
 
-## 10. Phase 2 預留項目（不在本 spec 實作範圍）
+## 10. Phase 2 預留項目（按 8 大主題對應 ADR）
 
-僅列項目以說明 Phase 1 設計如何為其鋪路：
+僅列項目以說明 Phase 1 設計如何為其鋪路；每項註明對應 ADR 編號（per [ADR-0067 schema-reserved-but-disabled-fields](../../adr/0067-schema-reserved-but-disabled-fields.md) 紀律 — Phase 1 schema 預留、Phase 2 啟用）。
 
-- 客戶公司管理員角色（multi-tenant；`tenant_id` 已預留）
-- LINE OA 自動列出綁定客戶所有案件
-- 後台敏感資料預設遮罩 + JIT 授權 + 完整稽核紀錄（施行細則第 12 條對應）
-- 「我已離職」LINE 觸發立即匿名化
-- 4 環境（Dev / Stage / Demo / Prod）
-- 報修地點結構化（公司+樓層下拉）
-- reCAPTCHA / 防灌水
-- Phase 2 啟動前重新做一輪 brainstorm
+### 10.1 多租戶（Multi-tenant）
+
+- 客戶公司管理員角色 — 對應 [ADR-0017](../../adr/0017-multitenancy-pool-rls.md)（Pool 模式 + tenant_id + RLS）+ [ADR-0089](../../adr/0089-multi-tenant-pool-mode-rls.md)
+- subdomain 解析 + tenant context proxy — 對應 [ADR-0017](../../adr/0017-multitenancy-pool-rls.md)；Phase 4 落地 proxy.ts skeleton（單一 default tenant）；Phase 2 啟用真實 tenant 解析
+- Postgres RLS policy ENABLE — Phase 4 declare（Drizzle pgPolicy）；Phase 2 啟用 + `FORCE ROW LEVEL SECURITY`
+- 各租戶可自訂 audit log 保留期（B2B 合約要求）— 對應 [ADR-0133](../../adr/0133-audit-log-anonymization-strategy.md)
+
+### 10.2 RBAC + 動態權限（per E 段）
+
+- 後台敏感資料預設遮罩 + JIT 授權 + 完整稽核紀錄（per 施行細則第 12 條） — 對應 [ADR-0019](../../adr/0019-rbac-jsonb-attributes-catalog.md)（jsonb attributes + catalog）
+- 各租戶自訂 role + permission — 同上
+
+### 10.3 客戶查詢介面（LINE）
+
+- LINE OA 自動列出綁定客戶所有案件 — 對應 Plan 7 LINE OA query
+- LIFF 客戶查詢介面（Phase 7 LIFF）— 對應 [ADR-0007](../../adr/0007-line-messaging-api-liff.md) + Plan 7
+
+### 10.4 PDPA 強化
+
+- 「我已離職」LINE 觸發立即匿名化 + 跨表處理（per ADR-0133 方案 D）— Phase 1 已實作基本框架；Phase 2 加 UX 優化
+- 兒童個資（未滿 14 歲）特殊處理 — TBD per [ADR-0088](../../adr/0088-reporter-pii-pdpa-handling.md)
+- 跨境傳輸 SCC / 個資傳輸協議文本 — TBD per ADR-0088
+
+### 10.5 環境管理
+
+- 4 環境（Dev / Stage / Demo / Prod）— 對應 [ADR-0012](../../adr/0012-vercel-git-integration-cd.md)
+- Phase 1 = 2 環境（dev / prod）
+
+### 10.6 結構化資料
+
+- 報修地點結構化（公司+樓層下拉）— 對應 [ADR-0016](../../adr/0016-postgres-ltree-tree-structure.md) ltree + [ADR-0106](../../adr/0106-five-layer-location-hierarchy.md) 5 層 hierarchy；Phase 4 schema 預留 `cases.building_node_id uuid NULL` + 建空 `building_nodes` 表；Phase 2 種資料 + 加 FK + UI
+
+### 10.7 防濫用 / 攻擊面
+
+- reCAPTCHA / 防灌水 — Phase 2 spec
+- 後台敏感欄位 JIT 授權的 audit + 異常告警 — 對應 [ADR-0076](../../adr/0076-audit-log-append-only-event-sourcing.md)
+
+### 10.8 AI 三道地基（per C8 / ADR-0071）
+
+- 資料地基：jsonb 彈性 schema — Phase 4 已預留 `cases.metadata jsonb` + Zod schema validator
+- 事件地基：audit_log + outbox + cron poll — Phase 4 已落地（per Round-2 Outbox pattern 取代 LISTEN/NOTIFY）
+- 變更理由地基：change_reason_catalog — Phase 4 已落地（per [ADR-0078](../../adr/0078-change-reason-catalog.md)）
+
+### Phase 2 啟動前
+
+- 重新做一輪 brainstorm（per Phase 1 → 2 transition；非當前 spec 範圍）
 
 ---
 

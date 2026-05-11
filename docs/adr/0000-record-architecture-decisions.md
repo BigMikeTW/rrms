@@ -82,9 +82,41 @@ RRMS 的設計演進過程中已經累積大量決議，分散在不同型態的
 
 ADR 一旦 `Status: Accepted`：
 
-- **內容不可修改**（typo / 引用更新 OK；決議實質改動禁）
+- **內容不可修改**（typo / 引用更新 OK；決議實質改動禁 — 細則見下方 Amendment Policy）
 - 若決議被推翻 → 新開 ADR、舊 ADR 標 `Status: Superseded by ADR-YYYY` + 新 ADR `Supersedes: ADR-XXXX`
 - 舊 ADR **永不刪除**（事件溯源原則 — 同 brainstorm D2 全系統 audit_log append-only 紀律）
+
+### Amendment Policy
+
+「不可變性」與「現實上需要修錯字 / 補欄位」之間需明確邊界。下表為允許／禁止判準：
+
+| ✅ 允許 Amendment（不需 supersede） | ❌ 必須 Supersede（決策變動） |
+|---|---|
+| Typo / 文法 / 翻譯修正 | 決策內容改變（如 Auth.js → Better Auth）|
+| 欄位 / enum / 列表的 extension（決策精神不變）| 解決方案改變（A 改 B）|
+| 參考 URL 失效 / fix broken link | 紀律強度改變（mandatory → optional 或反之）|
+| Status 變更（Proposed → Accepted；Accepted → Deprecated）| 範圍縮減（適用情境變窄）|
+| 新增 cross-link 到相關 ADR | 新增改變既有行為的強制要求 |
+
+**Amendment 必要動作**：
+
+1. ADR 末尾加 `## Amendments` 段（表格格式如下）
+2. 每筆 amendment 必含：Date / PR / Reason / Change 4 欄
+3. **Decision 段內容不可改動**（紀律 — 改動屬決策變動，須走 supersede）
+4. Status 維持 `Accepted`（amendment 不改 status）
+5. 既有 References 段不刪；新增 reference 加進去即可
+
+```markdown
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| YYYY-MM-DD | #N | 簡述為何補 | 改了什麼（不重述決策） |
+```
+
+**判準有疑慮時 → 走 supersede**（過度 supersede 比錯誤 amend 一個決策變動安全 — 後者污染歷史紀錄）。
+
+`scripts/audit-docs.mjs` Check 8 驗證：若 ADR 含 `## Amendments` 段，每列必有 Date / PR / Reason / Change 4 欄；缺任一即 fail。
 
 ### 引用紀律
 

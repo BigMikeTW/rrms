@@ -7,7 +7,7 @@
 | Supersedes | — |
 | Superseded by | — |
 | Brainstorm 來源 | `audit-trail.html` § D 決議 D4 |
-| Related ADR | ADR-0076, ADR-0077, ADR-0082 |
+| Related ADR | ADR-0076, ADR-0077, ADR-0082, ADR-0088, ADR-0133 |
 
 ## Context
 
@@ -21,6 +21,7 @@ ITIL 4 Change Enablement 與 SOC 2 CC7.3 都要求變更需有 documented reason
 - `CONTRACT_TERMINATED_EXPIRED`、`CONTRACT_TERMINATED_DEFAULT`
 - `RATE_CARD_UPDATE`、`POST_RESOLUTION_ADJUSTMENT`、`DISPUTED_RESOLUTION`
 - `CASE_REOPENED_CUSTOMER_REQUEST`、`CASE_REOPENED_QC_REJECT`
+- `USER_ANONYMIZED_RETENTION_EXPIRED`、`USER_ANONYMIZED_RIGHTS_REQUEST`（per ADR-0133 audit_log 真匿名化兩種觸發情境）
 
 新增 reason_code 屬於設定變更，本身亦寫入 audit_log。
 
@@ -41,8 +42,14 @@ ITIL 4 Change Enablement 與 SOC 2 CC7.3 都要求變更需有 documented reason
 
 ## References
 
-- 個人資料保護法施行細則第 12 條第 2 項第 6 款: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
+- 個人資料保護法施行細則第 12 條第 2 項第 10 款（使用紀錄、軌跡資料及證據保存）: https://law.moj.gov.tw/LawClass/LawSingle.aspx?pcode=I0050022&flno=12
 - ISO/IEC 27001:2022 A.8.15 Logging: https://www.iso.org/standard/82875.html
 - GDPR Article 30 Records of processing activities: https://gdpr-info.eu/art-30-gdpr/
 - ITIL 4 Change Enablement Practice Guide: https://www.axelos.com/certifications/itil-service-management/itil-4-foundation
 - AICPA SOC 2 CC7.3: https://www.aicpa-cima.com/resources/landing/system-and-organization-controls-soc-suite-of-services
+
+## Amendments
+
+| Date | PR | Reason | Change |
+|---|---|---|---|
+| 2026-05-11 | TBD (Phase 4) | ADR-0133 引入「audit_log 真匿名化」策略，新增兩種匿名化觸發情境須有對應 reason_code | 預設條目補 `USER_ANONYMIZED_RETENTION_EXPIRED` 與 `USER_ANONYMIZED_RIGHTS_REQUEST`；Related ADR 加 ADR-0088、ADR-0133 |
