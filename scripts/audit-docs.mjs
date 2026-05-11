@@ -111,7 +111,12 @@ async function checkAdrIntegrity() {
     if (base === "README.md" || base === "_template.md") continue;
     const m = base.match(/^(\d{4})-/);
     if (!m) {
-      reportIssue("ADR", "error", relPath(f), `ADR filename doesn't start with 4-digit number: ${base}`);
+      reportIssue(
+        "ADR",
+        "error",
+        relPath(f),
+        `ADR filename doesn't start with 4-digit number: ${base}`,
+      );
       continue;
     }
     adrByNumber.set(m[1], f);
@@ -120,33 +125,64 @@ async function checkAdrIntegrity() {
   // Verify each ADR's Status / Supersedes / Superseded-by fields
   for (const [num, file] of adrByNumber) {
     const text = await readFile(file, "utf8");
-    const status = text.match(/^\|\s*Status\s*\|\s*([^|]+?)\s*\|/m)?.[1]?.trim();
+    const status = text
+      .match(/^\|\s*Status\s*\|\s*([^|]+?)\s*\|/m)?.[1]
+      ?.trim();
     if (!status) {
-      reportIssue("ADR", "error", relPath(file), `ADR ${num} missing Status field`);
+      reportIssue(
+        "ADR",
+        "error",
+        relPath(file),
+        `ADR ${num} missing Status field`,
+      );
       continue;
     }
     const validStatus =
       /^(Proposed|Accepted|Deprecated)$/.test(status) ||
       /^Superseded by ADR-\d{4}$/.test(status);
     if (!validStatus) {
-      reportIssue("ADR", "error", relPath(file), `ADR ${num} has invalid Status: "${status}"`);
+      reportIssue(
+        "ADR",
+        "error",
+        relPath(file),
+        `ADR ${num} has invalid Status: "${status}"`,
+      );
     }
 
     // Mutual supersede chain
-    const supersedes = text.match(/^\|\s*Supersedes\s*\|\s*([^|]+?)\s*\|/m)?.[1]?.trim();
+    const supersedes = text
+      .match(/^\|\s*Supersedes\s*\|\s*([^|]+?)\s*\|/m)?.[1]
+      ?.trim();
     if (supersedes && supersedes !== "—") {
       const supersededNum = supersedes.match(/ADR-(\d{4})/)?.[1];
       if (!supersededNum) {
-        reportIssue("ADR", "error", relPath(file), `ADR ${num} Supersedes field "${supersedes}" not in "ADR-XXXX" form`);
+        reportIssue(
+          "ADR",
+          "error",
+          relPath(file),
+          `ADR ${num} Supersedes field "${supersedes}" not in "ADR-XXXX" form`,
+        );
       } else {
         const target = adrByNumber.get(supersededNum);
         if (!target) {
-          reportIssue("ADR", "error", relPath(file), `ADR ${num} Supersedes ADR-${supersededNum} but that ADR doesn't exist`);
+          reportIssue(
+            "ADR",
+            "error",
+            relPath(file),
+            `ADR ${num} Supersedes ADR-${supersededNum} but that ADR doesn't exist`,
+          );
         } else {
           const targetText = await readFile(target, "utf8");
-          const targetSupersededBy = targetText.match(/^\|\s*Superseded by\s*\|\s*([^|]+?)\s*\|/m)?.[1]?.trim();
+          const targetSupersededBy = targetText
+            .match(/^\|\s*Superseded by\s*\|\s*([^|]+?)\s*\|/m)?.[1]
+            ?.trim();
           if (!targetSupersededBy?.includes(`ADR-${num}`)) {
-            reportIssue("ADR", "error", relPath(file), `ADR ${num} Supersedes ADR-${supersededNum} but ADR-${supersededNum}'s "Superseded by" doesn't link back`);
+            reportIssue(
+              "ADR",
+              "error",
+              relPath(file),
+              `ADR ${num} Supersedes ADR-${supersededNum} but ADR-${supersededNum}'s "Superseded by" doesn't link back`,
+            );
           }
         }
       }
@@ -185,12 +221,20 @@ async function checkAdrIntegrity() {
 
         if (!headerSeen) {
           // First row is the header
-          if (cols.length !== 4 || cols[0].toLowerCase() !== "date" ||
-              cols[1].toLowerCase() !== "pr" || cols[2].toLowerCase() !== "reason" ||
-              cols[3].toLowerCase() !== "change") {
-            reportIssue("ADR-amendment", "error", relPath(file),
+          if (
+            cols.length !== 4 ||
+            cols[0].toLowerCase() !== "date" ||
+            cols[1].toLowerCase() !== "pr" ||
+            cols[2].toLowerCase() !== "reason" ||
+            cols[3].toLowerCase() !== "change"
+          ) {
+            reportIssue(
+              "ADR-amendment",
+              "error",
+              relPath(file),
               `ADR ${num} Amendments table header must be exactly | Date | PR | Reason | Change | (got: ${cols.join(" | ")})`,
-              i + 1);
+              i + 1,
+            );
           }
           headerSeen = true;
           continue;
@@ -202,19 +246,55 @@ async function checkAdrIntegrity() {
         }
         // Data rows
         if (cols.length !== 4) {
-          reportIssue("ADR-amendment", "error", relPath(file),
+          reportIssue(
+            "ADR-amendment",
+            "error",
+            relPath(file),
             `ADR ${num} Amendments row must have exactly 4 columns (Date / PR / Reason / Change); got ${cols.length}`,
-            i + 1);
+            i + 1,
+          );
           continue;
         }
-        if (!cols[0]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing Date`, i + 1);
-        if (!cols[1]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing PR`, i + 1);
-        if (!cols[2]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing Reason`, i + 1);
-        if (!cols[3]) reportIssue("ADR-amendment", "error", relPath(file), `ADR ${num} Amendment row missing Change`, i + 1);
+        if (!cols[0])
+          reportIssue(
+            "ADR-amendment",
+            "error",
+            relPath(file),
+            `ADR ${num} Amendment row missing Date`,
+            i + 1,
+          );
+        if (!cols[1])
+          reportIssue(
+            "ADR-amendment",
+            "error",
+            relPath(file),
+            `ADR ${num} Amendment row missing PR`,
+            i + 1,
+          );
+        if (!cols[2])
+          reportIssue(
+            "ADR-amendment",
+            "error",
+            relPath(file),
+            `ADR ${num} Amendment row missing Reason`,
+            i + 1,
+          );
+        if (!cols[3])
+          reportIssue(
+            "ADR-amendment",
+            "error",
+            relPath(file),
+            `ADR ${num} Amendment row missing Change`,
+            i + 1,
+          );
       }
       if (inTable && !headerSeen) {
-        reportIssue("ADR-amendment", "error", relPath(file),
-          `ADR ${num} has ## Amendments section but no table header row`);
+        reportIssue(
+          "ADR-amendment",
+          "error",
+          relPath(file),
+          `ADR ${num} has ## Amendments section but no table header row`,
+        );
       }
     }
   }
@@ -248,7 +328,7 @@ async function checkAdrReferences() {
             "ADR-ref",
             "warn",
             relPath(file),
-            `References ADR-${num} but no such ADR file exists yet (expected in Phase 2B)`
+            `References ADR-${num} but no such ADR file exists yet (expected in Phase 2B)`,
           );
         }
       }
@@ -262,7 +342,7 @@ async function checkAdrReferences() {
 
 const DEPRECATED_TERMS = [
   // [pattern, replacement-or-explanation]
-  [/\bAuth\.js\b/g, "Better Auth (per ADR-0006 / brainstorm A5 reversal)"],
+  [/\bAuth\.js\b/g, "Better Auth (per ADR-0132 / supersedes ADR-0005)"],
   [/\bNEXTAUTH_SECRET\b/g, "BETTER_AUTH_SECRET"],
   [/\bAUTH_SECRET\b(?!.*BETTER_AUTH)/g, "BETTER_AUTH_SECRET"],
   [/@auth\/drizzle-adapter/g, "better-auth/adapters/drizzle"],
@@ -342,7 +422,9 @@ function isHistoricalContextLine(line) {
 // the section as historical comparison (e.g., "## Why Better Auth (and not Auth.js v5)").
 function isHistoricalSection(headingStack) {
   return headingStack.some((h) =>
-    /Why Better Auth|and not Auth\.js|historical|deprecated|superseded/i.test(h)
+    /Why Better Auth|and not Auth\.js|historical|deprecated|superseded/i.test(
+      h,
+    ),
   );
 }
 
@@ -386,7 +468,7 @@ async function checkDeprecatedTerms() {
               "error",
               relPath(file),
               `Line ${i + 1}: deprecated term "${m[0]}" — use ${hint}`,
-              i + 1
+              i + 1,
             );
             break; // one report per pattern per line
           }
@@ -432,14 +514,17 @@ async function checkPackageVersionDrift() {
               "version-drift",
               "warn",
               relPath(file),
-              `Doc says ${pkgName}@${docVersion} but package.json has "${installedRange}"`
+              `Doc says ${pkgName}@${docVersion} but package.json has "${installedRange}"`,
             );
-          } else if (kind === "major version" && installedMajor !== docVersion) {
+          } else if (
+            kind === "major version" &&
+            installedMajor !== docVersion
+          ) {
             reportIssue(
               "version-drift",
               "warn",
               relPath(file),
-              `Doc says ${pkgName} v${docVersion}.x but package.json has "${installedRange}"`
+              `Doc says ${pkgName} v${docVersion}.x but package.json has "${installedRange}"`,
             );
           }
         }
@@ -475,23 +560,56 @@ async function checkEnvVarConsistency() {
         const name = m[1];
         // Filter common false positives
         if (
-          name === "OWASP" || name === "OAUTH" || name === "OIDC" ||
-          name === "HTTPS" || name === "PUT" || name === "GET" ||
-          name === "POST" || name === "DELETE" || name === "JSON" ||
-          name === "HTML" || name === "CSV" || name === "PDF" ||
-          name === "SQL" || name === "URL" || name === "URI" ||
-          name === "API" || name === "SDK" || name === "CLI" ||
-          name === "RRMS" || name === "CRUD" || name === "RBAC" ||
-          name === "CSRF" || name === "XSS" || name === "IDOR" ||
-          name === "GDPR" || name === "PDPA" || name === "TOS" ||
-          name === "NULL" || name === "TEXT" || name === "UUID" ||
-          name === "HASH" || name === "EMAIL" || name === "PHONE" ||
-          name === "PASS" || name === "FAIL" || name === "WARN" ||
-          name === "ERROR" || name === "INFO" || name === "DEBUG" ||
-          name === "TRUE" || name === "FALSE" || name === "MERGE" ||
-          name === "PUSH" || name === "PULL" || name === "FETCH" ||
-          name === "STAT" || name === "DIFF" || name === "BLOB"
-        ) continue;
+          name === "OWASP" ||
+          name === "OAUTH" ||
+          name === "OIDC" ||
+          name === "HTTPS" ||
+          name === "PUT" ||
+          name === "GET" ||
+          name === "POST" ||
+          name === "DELETE" ||
+          name === "JSON" ||
+          name === "HTML" ||
+          name === "CSV" ||
+          name === "PDF" ||
+          name === "SQL" ||
+          name === "URL" ||
+          name === "URI" ||
+          name === "API" ||
+          name === "SDK" ||
+          name === "CLI" ||
+          name === "RRMS" ||
+          name === "CRUD" ||
+          name === "RBAC" ||
+          name === "CSRF" ||
+          name === "XSS" ||
+          name === "IDOR" ||
+          name === "GDPR" ||
+          name === "PDPA" ||
+          name === "TOS" ||
+          name === "NULL" ||
+          name === "TEXT" ||
+          name === "UUID" ||
+          name === "HASH" ||
+          name === "EMAIL" ||
+          name === "PHONE" ||
+          name === "PASS" ||
+          name === "FAIL" ||
+          name === "WARN" ||
+          name === "ERROR" ||
+          name === "INFO" ||
+          name === "DEBUG" ||
+          name === "TRUE" ||
+          name === "FALSE" ||
+          name === "MERGE" ||
+          name === "PUSH" ||
+          name === "PULL" ||
+          name === "FETCH" ||
+          name === "STAT" ||
+          name === "DIFF" ||
+          name === "BLOB"
+        )
+          continue;
         if (name.length > 50) continue; // probably a long ALL_CAPS narrative
         docEnvVars.add(name);
       }
@@ -507,16 +625,19 @@ async function checkEnvVarConsistency() {
   //   - Truncated narrative all-caps (e.g. ALL_CAPS_TITLES)
   const KNOWN_NON_RRMS_ENV = new Set([
     "GITHUB_TOKEN", // GitHub Actions native, not RRMS app config
-    "FAKE_SECRET",  // red-team-test.sh script variable
+    "FAKE_SECRET", // red-team-test.sh script variable
     "PAYLOAD_NAME", // ditto
     "NEXTAUTH_SECRET", // historical, only in rule patterns
-    "AUTH_SECRET",     // historical, only in rule patterns
-    "POSTGRES_URL",        // Vercel/Neon legacy auto-injected, RRMS uses DATABASE_URL
+    "AUTH_SECRET", // historical, only in rule patterns
+    "POSTGRES_URL", // Vercel/Neon legacy auto-injected, RRMS uses DATABASE_URL
     "POSTGRES_PRISMA_URL", // same
     "POSTGRES_URL_NON_POOLING", // same
-    "TEST_ADMIN_EMAIL", "TEST_ADMIN_PASSWORD",
-    "TEST_STAFF_EMAIL", "TEST_STAFF_PASSWORD",
-    "SEED_ADMIN_EMAIL", "SEED_ADMIN_PASSWORD",
+    "TEST_ADMIN_EMAIL",
+    "TEST_ADMIN_PASSWORD",
+    "TEST_STAFF_EMAIL",
+    "TEST_STAFF_PASSWORD",
+    "SEED_ADMIN_EMAIL",
+    "SEED_ADMIN_PASSWORD",
     // Red-team test fixtures (Plan 1 Task 4 Step 4 violation-public-secret.tsx):
     "NEXT_PUBLIC_LINE_CHANNEL_SECRET",
     // Red-team test payload (red-team-test.sh PAYLOAD_NAME):
@@ -526,22 +647,26 @@ async function checkEnvVarConsistency() {
     // heuristic but are documentation strings used in audit_log `what` and
     // `reason_code` columns. They are NOT env vars and must be excluded from
     // the env-var-drift check.
-    "LINE_WEBHOOK_RECEIVED", "LINE_INBOUND",
-    "LINE_PUSH_SENT", "LINE_PUSH_FAILED", "LINE_OUTBOUND",
+    "LINE_WEBHOOK_RECEIVED",
+    "LINE_INBOUND",
+    "LINE_PUSH_SENT",
+    "LINE_PUSH_FAILED",
+    "LINE_OUTBOUND",
     "LINE_INVALID_SIGNATURE",
   ]);
 
-  const candidateEnvVars = [...docEnvVars].filter((v) =>
-    v.includes("_") &&
-    !v.endsWith("_") && // truncated like "NEXT_PUBLIC_"
-    !v.startsWith("RPR_") &&
-    !envVars.has(v) &&
-    !KNOWN_NON_RRMS_ENV.has(v) &&
-    // Only flag patterns that LOOK like RRMS env vars
-    (
-      /_(SECRET|TOKEN|URL|KEY|ID)$/.test(v) ||
-      /^(LINE_|GOOGLE_|DROPBOX_|BETTER_AUTH_|NEXT_PUBLIC_|CRON_|DATABASE_)/.test(v)
-    )
+  const candidateEnvVars = [...docEnvVars].filter(
+    (v) =>
+      v.includes("_") &&
+      !v.endsWith("_") && // truncated like "NEXT_PUBLIC_"
+      !v.startsWith("RPR_") &&
+      !envVars.has(v) &&
+      !KNOWN_NON_RRMS_ENV.has(v) &&
+      // Only flag patterns that LOOK like RRMS env vars
+      (/_(SECRET|TOKEN|URL|KEY|ID)$/.test(v) ||
+        /^(LINE_|GOOGLE_|DROPBOX_|BETTER_AUTH_|NEXT_PUBLIC_|CRON_|DATABASE_)/.test(
+          v,
+        )),
   );
 
   for (const name of candidateEnvVars) {
@@ -549,7 +674,7 @@ async function checkEnvVarConsistency() {
       "env-var-drift",
       "warn",
       ".env.example",
-      `Doc references ${name} but it's not in .env.example`
+      `Doc references ${name} but it's not in .env.example`,
     );
   }
 }
@@ -580,10 +705,12 @@ async function checkMarkdownLinks() {
         let m;
         while ((m = linkRe.exec(line))) {
           const [, , target] = m;
-          if (target.startsWith("http://") || target.startsWith("https://")) continue;
+          if (target.startsWith("http://") || target.startsWith("https://"))
+            continue;
 
           // Skip URL-encoded paths leading to user-level memory storage
-          if (target.includes("%20") || target.includes("Mike Lin/.claude")) continue;
+          if (target.includes("%20") || target.includes("Mike Lin/.claude"))
+            continue;
 
           // Skip placeholder paths in templates and examples
           if (
@@ -592,14 +719,16 @@ async function checkMarkdownLinks() {
             target.includes("<owner>") ||
             target.includes("<#>") ||
             target.includes("<PR")
-          ) continue;
+          )
+            continue;
 
           // Skip references to continue.md — gitignored per RRMS convention
           // (session handoff file; never committed; legitimately referenced
           // from research / audit reports as the working-tree handoff
           // artifact). On a fresh CI checkout the file does not exist, so
           // strict link integrity would always fail.
-          if (target === "continue.md" || target.endsWith("/continue.md")) continue;
+          if (target === "continue.md" || target.endsWith("/continue.md"))
+            continue;
 
           const resolved = resolve(dirname(file), target);
           if (!(await exists(resolved))) {
@@ -608,7 +737,7 @@ async function checkMarkdownLinks() {
               "error",
               relPath(file),
               `Broken markdown link: "${target}" (line ${i + 1})`,
-              i + 1
+              i + 1,
             );
           }
         }
@@ -627,7 +756,9 @@ function relPath(absPath) {
 
 function printReport() {
   if (issues.length === 0) {
-    console.log("✓ audit-docs: no issues found across all 7 checks.");
+    console.log(
+      `✓ audit-docs: no issues found across all ${checks.length} checks.`,
+    );
     return 0;
   }
 
