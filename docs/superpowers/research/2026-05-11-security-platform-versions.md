@@ -324,3 +324,11 @@ When:  Plan 2 Task 0 執行時（一次性；後續 task 直接讀此報告）�
 - 清理：`git checkout -- .` + `git clean -fd src/app/red-team-l5-leak` + 切回 Plan 2 branch + `git branch -D red-team/l5-bundle-secret-verify`；另刪除紅隊 build 後殘留的 `.next/`（含 stale `.next/types/validator.ts` 引用已刪頁面，會讓 pre-commit `tsc --noEmit` fail）；無紅隊 commit 進 Plan 2 PR；`git branch --list red-team/*` 空
 
 commit SHA: a3c02de（vercel.ts + spec）
+
+### γ-2 F-02: middleware.ts → proxy.ts sweep（2026-05-11）
+
+- Plan 3 改 9 處 prescriptive `middleware.ts` / `middleware` 概念用法 → `proxy.ts` / `proxy`（line 9 Architecture、line 66 file tree、line 582 doc comment、line 682 Step 6 標題、line 686-696 code sample doc + `export function proxy`、line 716 兩層防註解、line 722 commit msg、line 1080 / 1369 doc comments、line 1432 Self-Review）；Task 7.5 historical comparison（line 1627 標題 / line 1629 對應行 / line 1643 AsyncLocalStorage 註）保留並清晰化為「Next.js 16 v16.0.0 已將舊版 `middleware.ts` 重新命名為 `proxy.ts`；本專案一律使用 `proxy.ts`」；`createAuthMiddleware`（Better Auth API 名稱）未動
+- pre-plan-2 plan 改 5 處："tenant context middleware" → "tenant context proxy (`src/proxy.ts`)"（line 45 表格 / line 272 Task 7.5 / line 301 Phase 4 驗收）+ "schema + middleware + repository" → "schema + proxy + repository"（line 14）+ "middleware + repository 能正確過濾" → "proxy + repository"（line 303）
+- `scripts/audit-docs.mjs`：DEPRECATED_TERMS 加 `[/middleware\.ts/g, "proxy.ts (Next.js 16 rename per ADR-0001)"]`；HISTORICAL_CONTEXT_PATTERNS 加 5 條精準豁免（line 提到 `middleware.ts` + `proxy.ts` 並列、或 `middleware.ts` 搭配 重新命名/改名/舊名/舊版/formerly/renamed/而非/rename、或 `Next.js 16` 搭配 `middleware.ts`）；更新 file-level 4W docstring「Deprecated-term scan」段加入 `middleware.ts` 與豁免說明
+- `pnpm audit:docs` PASS（0 errors / 0 warnings）
+- commit SHA（sweep）: eb8546e
