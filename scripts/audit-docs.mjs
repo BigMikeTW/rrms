@@ -594,6 +594,13 @@ async function checkMarkdownLinks() {
             target.includes("<PR")
           ) continue;
 
+          // Skip references to continue.md — gitignored per RRMS convention
+          // (session handoff file; never committed; legitimately referenced
+          // from research / audit reports as the working-tree handoff
+          // artifact). On a fresh CI checkout the file does not exist, so
+          // strict link integrity would always fail.
+          if (target === "continue.md" || target.endsWith("/continue.md")) continue;
+
           const resolved = resolve(dirname(file), target);
           if (!(await exists(resolved))) {
             reportIssue(
